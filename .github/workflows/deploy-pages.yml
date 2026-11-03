@@ -22,6 +22,9 @@ jobs:
           godot --headless --script tests/run_tests.gd
       - name: Export Web build
         run: |
+          # The godot-ci image keeps export templates under /root; Actions runs with a different HOME.
+          mkdir -v -p ~/.local/share/godot/
+          cp -r /root/.local/share/godot/export_templates ~/.local/share/godot/
           mkdir -p build/web
           godot --headless --export-release "Web" build/web/index.html
           touch build/web/.nojekyll
