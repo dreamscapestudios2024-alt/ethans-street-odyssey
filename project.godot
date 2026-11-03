@@ -5,13 +5,14 @@ config_version=5
 
 config/name="Ethan's Skate Odyssey"
 config/description="Cartoon 2D skateboarding adventure - Stage 1 prototype."
-run/main_scene="res://scenes/levels/venice_beach/venice_beach.tscn"
+run/main_scene="res://scenes/ui/splash_screen.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [autoload]
 
 GameState="*res://scripts/systems/game_state.gd"
+Music="*res://scripts/systems/music_player.gd"
 
 [display]
 

@@ -7,6 +7,8 @@ and hazards. Story, relationships and 3D areas come in later stages.
 ## Requirements
 - **Godot 4.3 (stable)** or newer 4.x. Developed and tested headless on 4.3.
 
+The game opens on a splash screen: press any key, click or tap to start.
+
 ## Open & run (macOS)
 1. Install Godot 4.3 from <https://godotengine.org/download> (the standard, non-.NET build).
 2. `git clone https://github.com/dreamscapestudios2024-alt/ethans-street-odyssey`
@@ -32,6 +34,7 @@ The export is single-threaded (no SharedArrayBuffer), which is what GitHub Pages
 | Ollie / jump (hold = higher) | `Space`, `W` or `↑` |
 | Drop off a rail | `S` / `↓` |
 | Restart | `R` |
+| Music on/off | `M` |
 
 ## What's implemented
 - Ethan (`CharacterBody2D`) with an explicit state machine: idle, push, cruise, speed, brake,
@@ -51,7 +54,7 @@ godot --headless --path . --script tests/run_tests.gd
 
 ## Known limitations
 - Still placeholder: pothole, plain stairs (no rail), Layer-1 sky/ocean/hills, ground fill under the sidewalk. Ethan has no animations for kickflip/180/boardslide yet (frames exist in the source sheets).
-- No audio yet (songs exist on the creative director's Mac; SFX pending).
+- Only the title song is in the game ("Ethan at the Curb"); sound effects and level music are pending.
 - No touch controls yet (needed for phones, see roadmap).
 - Ethan only travels left→right; no reverse. Only a basic 50-50 grind.
 - Not yet play-felt on a real display by the author of this commit: physics tuned via headless simulation only. Expect tuning passes.

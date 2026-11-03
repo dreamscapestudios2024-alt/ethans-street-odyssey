@@ -10,6 +10,7 @@ const BINDINGS := {
 	"jump": [KEY_SPACE, KEY_W, KEY_UP],
 	"drift": [KEY_SHIFT],
 	"reset": [KEY_R],
+	"mute": [KEY_M],
 }
 
 static func ensure_actions() -> void:
