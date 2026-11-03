@@ -19,7 +19,7 @@ func _ready() -> void:
 	var ground := Node2D.new()
 	ground.name = "Layer3_GameplayGround"
 	add_child(ground)
-	course = CourseBuilder.new(Vector2.ZERO)
+	course = CourseBuilder.new(Vector2(-1800.0, 0.0))  # layout starts with a 1800px lead-in so x=0 is the start line
 	course.build(ground, VeniceBeachLayout.layout())
 	level_end_x = course.cursor.x
 

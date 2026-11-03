@@ -6,6 +6,7 @@ const T := StreetModule.Type
 
 static func layout() -> Array:
 	return [
+		{"type": T.SIDEWALK, "length": 1800.0},                         # lead-in behind the start line (x < 0)
 		{"type": T.SIDEWALK, "length": 1800.0},                         # warm-up: push, cruise
 		{"type": T.GARDEN_BED, "length": 492.0},                        # jump up onto it
 		{"type": T.SIDEWALK, "length": 700.0},
