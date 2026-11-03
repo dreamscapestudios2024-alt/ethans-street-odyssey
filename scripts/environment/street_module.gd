@@ -234,6 +234,10 @@ const C_PLANT := Color("4d9a4a")
 func _draw() -> void:
 	var w := effective_length()
 	var h := effective_height()
+	if type == Type.POTHOLE and use_art and StreetArt.ground_texture() != null:
+		_draw_ground(w)
+		_draw_pothole(w)
+		return
 	if _draw_art(w, h):
 		return
 	if texture_single != null:
@@ -311,6 +315,15 @@ func _draw_ground(w: float) -> void:
 	var top := -float(sp["solid_top"]) * sc
 	draw_rect(Rect2(0, 4.0, w, ground_depth), GROUND_FILL)  # also fills seams between slab tiles
 	_draw_tiles(g, sc, 0.0, w, top)
+
+func _draw_pothole(w: float) -> void:
+	var pts := PackedVector2Array()
+	for i in 24:
+		var a := TAU * i / 24.0
+		pts.append(Vector2(w * 0.5 + cos(a) * (w * 0.5 - 8.0), 6.0 + sin(a) * 15.0))
+	draw_colored_polygon(pts, Color("2b2623"))
+	draw_polyline(pts + PackedVector2Array([pts[0]]), Color("0f0d0c"), 3.0)
+	draw_rect(Rect2(w * 0.25, 4.0, w * 0.5, 4.0), Color("55493f"))
 
 func _draw_art_rect(tex: Texture2D, rect: Rect2, flip_h: bool) -> void:
 	if not flip_h:

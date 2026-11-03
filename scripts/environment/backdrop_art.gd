@@ -7,6 +7,17 @@ extends RefCounted
 const DIR := "res://assets/backgrounds/"
 const GROUND_Y := 820.0
 
+## Repeating Venice promenade strip (Layer 2a). Source PNG is 1916x821 with the artwork in rows 376..528.
+const PROMENADE_PATH := "layer2/venice_promenade_repeat"
+const PROMENADE_REGION := Rect2(0, 376, 1916, 153)   ## trims the empty canvas; width is never trimmed (seamless)
+const PROMENADE_SCALE := 1.5
+const PROMENADE_PAVEMENT_ROW := 113.0                ## rows from region top to where the promenade pavement starts
+const PROMENADE_GROUND_OFFSET := -6.0                ## world y where that pavement edge sits (just above the sidewalk top)
+const PROMENADE_BELOW_COLOR := Color(0.43, 0.40, 0.43)
+## World-space y of the strip's top edge == the sea horizon. Layer 1 (sky, hills, landmarks) meets it.
+const HORIZON_WORLD_Y := PROMENADE_GROUND_OFFSET - PROMENADE_PAVEMENT_ROW * PROMENADE_SCALE
+const HORIZON_Y := GROUND_Y + HORIZON_WORLD_Y         ## the same horizon in layer art space
+
 static var _cache: Dictionary = {}
 
 static func texture(rel: String) -> Texture2D:
@@ -24,9 +35,10 @@ static func layout(kind: int, tile_w: float) -> Array:
 	var items: Array = []
 	match kind:
 		PlaceholderBackdrop.Kind.SKY_LANDMARKS:
-			items.append(_place("layer1/lifeguard", 280.0, 585.0, 1.0))
-			items.append(_place("layer1/pier", 1450.0, 585.0, 1.4))
-			items.append(_place("layer1/gazebo", 2750.0, 600.0, 1.0))
+			# bases sit a little below the horizon so their feet are hidden behind the promenade strip
+			items.append(_place("layer1/lifeguard", 280.0, HORIZON_Y + 12.0, 1.0))
+			items.append(_place("layer1/pier", 1450.0, HORIZON_Y + 14.0, 1.4))
+			items.append(_place("layer1/gazebo", 2750.0, HORIZON_Y + 12.0, 1.0))
 		PlaceholderBackdrop.Kind.LOCAL_SCENERY:
 			var seq := ["layer2/shop_skate", "layer2/palm", "layer2/shop_surf", "layer2/shop_cafe",
 				"layer2/mural_venice", "layer2/palm", "layer2/shop_market", "layer2/house_yellow"]

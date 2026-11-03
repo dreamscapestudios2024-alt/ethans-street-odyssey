@@ -23,6 +23,7 @@ func _run() -> void:
 	test_math()
 	test_modules()
 	test_rail()
+	test_promenade()
 	root.remove_child(_holder)
 	_holder.free()
 	await test_gameplay()
@@ -82,6 +83,50 @@ func test_rail() -> void:
 	check(not r.can_attach(Vector2(100, 0), Vector2(98, 20), Vector2(400, -600)), "no attach while rising fast")
 	check(not r.can_attach(Vector2(100, 0), Vector2(98, -4), Vector2(20, 100)), "no attach too slow")
 	check(not r.can_attach(Vector2(900, 0), Vector2(898, -4), Vector2(400, 100)), "no attach outside span")
+
+func test_promenade() -> void:
+	print("Promenade background (Layer 2a)")
+	var tex: Texture2D = BackdropArt.texture(BackdropArt.PROMENADE_PATH)
+	check(tex != null, "promenade PNG is present")
+	if tex == null:
+		return
+	check(tex.get_width() == int(BackdropArt.PROMENADE_REGION.size.x), "strip width untouched (seamless repeat length)")
+	var img := tex.get_image()
+	check(img.detect_alpha() != Image.ALPHA_NONE and img.get_pixel(5, 5).a < 0.05, "transparency preserved")
+	# seam: right edge column joins the left edge column about as smoothly as neighbouring columns
+	var y0 := int(BackdropArt.PROMENADE_REGION.position.y)
+	var h := int(BackdropArt.PROMENADE_REGION.size.y)
+	var seam := 0.0
+	var inner := 0.0
+	var w := tex.get_width()
+	for y in range(y0, y0 + h):
+		seam += _px_diff(img.get_pixel(w - 1, y), img.get_pixel(0, y))
+		inner += _px_diff(img.get_pixel(w / 2, y), img.get_pixel(w / 2 + 1, y))
+	check(seam / h < 25.0, "no visible seam at repeat boundary (diff %.1f)" % (seam / h))
+	var holder := Node2D.new()
+	_holder.add_child(holder)
+	var pw := ParallaxWorld.new()
+	pw.build(holder)
+	check(pw.layer2a != null, "promenade layer built")
+	check(is_equal_approx(pw.layer2a.motion_scale.x, 0.4) and pw.layer2a.motion_scale.y == 1.0, "scrolls at 0.4x horizontally, fixed vertically")
+	check(is_equal_approx(pw.layer2a.motion_mirroring.x, w * BackdropArt.PROMENADE_SCALE), "repeats every texture width (no gap/overlap)")
+	var bg := pw.layer2a.get_parent()
+	check(bg.get_child(0) == pw.layer1 and bg.get_child(1) == pw.layer2a and bg.get_child(2) == pw.layer2, "layer order: distant -> promenade -> shops")
+	var has_collision := false
+	var stack: Array[Node] = [pw.layer2a]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is CollisionObject2D or n is CollisionShape2D or n is CollisionPolygon2D or n is GrindRail:
+			has_collision = true
+		stack.append_array(n.get_children())
+	check(not has_collision, "promenade is visual only (no collision, no grind rails)")
+	var strip: Sprite2D = pw.layer2a.get_node("PromenadeStrip")
+	check(is_equal_approx(strip.position.y, BackdropArt.HORIZON_WORLD_Y), "strip sits on the horizon above the sidewalk")
+	_holder.remove_child(holder)
+	holder.free()
+
+func _px_diff(a: Color, b: Color) -> float:
+	return (absf(a.r - b.r) + absf(a.g - b.g) + absf(a.b - b.b)) / 3.0 * 255.0 + absf(a.a - b.a) * 255.0
 
 func _step(n: int) -> void:
 	for i in n:
@@ -218,6 +263,15 @@ func test_gameplay() -> void:
 	await _step(240)
 	check(e.global_position.x > stairs.position.x + stairs.end_offset().x - 50.0, "passes down the stairs")
 	check(e.global_position.y > 100.0, "ends lower than the start (y %d)" % int(e.global_position.y))
+	# End of level: an invisible wall stops Ethan (the last street is lower than the start)
+	var last: StreetModule = lvl.course.modules[lvl.course.modules.size() - 1]
+	e.respawn(Vector2(lvl.level_end_x - 1500.0, last.position.y - 5.0))
+	await _step(20)
+	Input.action_press("push")
+	await _step(900)
+	Input.action_release("push")
+	check(e.global_position.x < lvl.level_end_x and e.global_position.y < last.position.y + 50.0, "end wall stops Ethan (x %d, end %d)" % [int(e.global_position.x), int(lvl.level_end_x)])
+
 	# Stairs handrail grind
 	e.respawn(Vector2(stairs.position.x - 180.0, stairs.position.y))
 	await _step(20)

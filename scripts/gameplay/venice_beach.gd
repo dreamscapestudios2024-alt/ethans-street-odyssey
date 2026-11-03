@@ -22,6 +22,7 @@ func _ready() -> void:
 	course = CourseBuilder.new(Vector2(-1800.0, 0.0))  # layout starts with a 1800px lead-in so x=0 is the start line
 	course.build(ground, VeniceBeachLayout.layout())
 	level_end_x = course.cursor.x
+	_add_end_stop(ground, level_end_x)
 
 	var actors := Node2D.new()
 	actors.name = "Layer4_Characters"
@@ -51,6 +52,20 @@ func _ready() -> void:
 	ethan.fell.connect(func(reason: String) -> void:
 		hud.show_banner("WIPEOUT! (%s)" % reason, 1.4))
 	ethan.recovered.connect(func() -> void: hud.show_banner("Back up!", 0.8))
+
+## Invisible wall so Ethan can never skate off the end of the demo into empty space.
+func _add_end_stop(parent: Node, x: float) -> void:
+	var body := StaticBody2D.new()
+	body.name = "EndStop"
+	body.collision_layer = 1
+	body.collision_mask = 0
+	var shape := RectangleShape2D.new()
+	shape.size = Vector2(60.0, 8000.0)
+	var cs := CollisionShape2D.new()
+	cs.shape = shape
+	cs.position = Vector2(x + 30.0 - 400.0, 0.0)        # 400px of runway before the true end; spans every ground height
+	body.add_child(cs)
+	parent.add_child(body)
 
 func _on_grind_ended(rail: GrindRail, duration: float, _by_jump: bool) -> void:
 	var pts := int(duration * rail.score_per_second * rail.score_multiplier)

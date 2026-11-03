@@ -30,13 +30,13 @@ func _draw() -> void:
 			Kind.FOREGROUND: _draw_foreground()
 
 func _draw_landmarks() -> void:
-	# Ocean horizon and soft hills; pier/lifeguard sprites are added by BackdropArt.
-	draw_rect(Rect2(0, 560, tile_width, 800), Color("3b8fc4"))
-	draw_rect(Rect2(0, 556, tile_width, 8), Color("a6d8f0"))
+	# Soft hills standing on the horizon. The sea itself is the repeating promenade strip (Layer 2a),
+	# which covers everything below HORIZON_Y, so no flat ocean colour is drawn here any more.
+	var h := BackdropArt.HORIZON_Y
 	for i in 6:
 		var x := i * tile_width / 6.0
-		draw_colored_polygon(PackedVector2Array([Vector2(x, 556), Vector2(x + 260, 420), Vector2(x + 520, 556)]), Color("8aa56a").darkened(0.1 * (i % 2)))
-	draw_circle(Vector2(tile_width * 0.8, 200), 90.0, Color("ffe08a"))
+		draw_colored_polygon(PackedVector2Array([Vector2(x, h + 4.0), Vector2(x + 260, h - 136), Vector2(x + 520, h + 4.0)]), Color("8aa56a").darkened(0.1 * (i % 2)))
+	draw_circle(Vector2(tile_width * 0.8, h - 360.0), 90.0, Color("ffe08a"))
 
 func _draw_scenery() -> void:
 	var x := 0.0
