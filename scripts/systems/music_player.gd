@@ -1,9 +1,13 @@
 extends Node
-## Persistent music controller (autoload "Music"). Survives scene changes so the title song can
-## carry on into the level. Missing tracks are ignored, so the game never fails without audio.
+## Persistent music + global audio-mute controller (autoload "Music"). Survives scene changes so the
+## title song can carry on into the level. Muting silences the whole Master bus, so it covers the
+## song and any sound effects added later. Missing tracks are ignored, so the game never fails without audio.
+
+signal muted_changed(is_muted: bool)
 
 const TITLE_TRACK := "res://assets/audio/ethan_at_the_curb.mp3"
 const MUTE_ACTION := "mute"
+const SETTINGS_PATH := "user://settings.cfg"
 
 var player: AudioStreamPlayer
 var muted := false
@@ -15,6 +19,7 @@ func _ready() -> void:
 	player = AudioStreamPlayer.new()
 	player.name = "MusicPlayer"
 	add_child(player)
+	_load_preference()
 
 ## Starts a track (looping by default). Returns false if the file is not available.
 func play_track(path: String, volume_db: float = 0.0, loop: bool = true) -> bool:
@@ -31,7 +36,7 @@ func play_track(path: String, volume_db: float = 0.0, loop: bool = true) -> bool
 		(stream as AudioStreamMP3).loop = loop
 	player.stream = stream
 	_volume_db = volume_db
-	player.volume_db = -80.0 if muted else volume_db
+	player.volume_db = volume_db
 	player.play()
 	return true
 
@@ -42,18 +47,36 @@ func ensure_playing() -> void:
 
 func fade_to(volume_db: float, seconds: float = 1.0) -> void:
 	_volume_db = volume_db
-	if muted:
-		return
 	if _tween != null and _tween.is_valid():
 		_tween.kill()
 	_tween = create_tween()
 	_tween.tween_property(player, "volume_db", volume_db, seconds)
 
 func set_muted(value: bool) -> void:
+	var changed := value != muted
 	muted = value
-	if _tween != null and _tween.is_valid():
-		_tween.kill()
-	player.volume_db = -80.0 if muted else _volume_db
+	_apply_mute()
+	if changed:
+		_save_preference()
+		muted_changed.emit(muted)
+
+## Mutes every sound in the game (Master bus); the music player's own volume is left alone.
+func _apply_mute() -> void:
+	var bus := AudioServer.get_bus_index("Master")
+	if bus >= 0:
+		AudioServer.set_bus_mute(bus, muted)
+
+func _load_preference() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_PATH) == OK:
+		muted = bool(cfg.get_value("audio", "muted", false))
+	_apply_mute()
+
+func _save_preference() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(SETTINGS_PATH)   # keep any other settings
+	cfg.set_value("audio", "muted", muted)
+	cfg.save(SETTINGS_PATH)
 
 func is_track_playing() -> bool:
 	return player != null and player.playing

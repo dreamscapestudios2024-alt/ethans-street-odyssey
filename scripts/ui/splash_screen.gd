@@ -16,8 +16,11 @@ var _hint: Label
 func _ready() -> void:
 	InputSetup.ensure_actions()
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Decorative controls must not swallow clicks/taps, or "click anywhere to start" never fires.
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var bg := ColorRect.new()
 	bg.color = Color.BLACK
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
@@ -25,6 +28,7 @@ func _ready() -> void:
 	_art.name = "SplashArt"
 	if ResourceLoader.exists(SPLASH_TEXTURE):
 		_art.texture = load(SPLASH_TEXTURE) as Texture2D
+	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_art.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
@@ -33,17 +37,20 @@ func _ready() -> void:
 
 	_hint = Label.new()
 	_hint.name = "StartHint"
-	_hint.text = "Press any key, click or tap      M: music on/off"
+	_hint.text = "Press any key, click or tap to start"
 	_hint.add_theme_font_size_override("font_size", 22)
 	_hint.add_theme_color_override("font_color", Color.WHITE)
 	_hint.add_theme_color_override("font_outline_color", Color.BLACK)
 	_hint.add_theme_constant_override("outline_size", 8)
+	_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)   # bottom-left corner, clear of the PRESS START banner
 	_hint.offset_left = 28.0
 	_hint.offset_top = -44.0
 	_hint.offset_bottom = -10.0
 	add_child(_hint)
+
+	add_child(MusicToggle.new())
 
 	_fade = ColorRect.new()
 	_fade.name = "FadeToBlack"

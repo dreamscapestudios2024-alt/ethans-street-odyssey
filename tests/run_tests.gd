@@ -102,10 +102,24 @@ func test_splash() -> void:
 	check(music.is_track_playing(), "title song starts on the splash screen")
 	check(music.player.stream is AudioStreamMP3 and music.player.stream.loop, "song loops")
 	music.set_muted(true)
-	check(music.player.volume_db <= -79.0, "mute silences the music")
+	check(AudioServer.is_bus_mute(AudioServer.get_bus_index("Master")), "mute silences the Master bus")
 	music.set_muted(false)
-	check(music.player.volume_db > -79.0, "unmute restores it")
+	check(not AudioServer.is_bus_mute(AudioServer.get_bus_index("Master")), "unmute restores it")
 	check(not music.play_track("res://assets/audio/does_not_exist.mp3"), "missing track is ignored safely")
+	var toggle: MusicToggle = null
+	for c in splash.get_children():
+		if c is MusicToggle:
+			toggle = c
+	check(toggle != null and toggle.text.strip_edges() == "Mute audio", "splash has a 'Mute audio' checkbox")
+	if toggle != null:
+		check(toggle.focus_mode == Control.FOCUS_NONE, "checkbox ignores keyboard (Space stays jump)")
+		toggle.button_pressed = true            # user ticks the box
+		check(music.muted and AudioServer.is_bus_mute(AudioServer.get_bus_index("Master")), "ticking the checkbox mutes all game audio")
+		toggle.button_pressed = false
+		check(not music.muted and not AudioServer.is_bus_mute(AudioServer.get_bus_index("Master")), "unticking it restores audio")
+		music.set_muted(true)                   # e.g. via the M key
+		check(toggle.button_pressed, "checkbox follows the M key / saved state")
+		music.set_muted(false)
 	root.remove_child(splash)
 	splash.free()
 

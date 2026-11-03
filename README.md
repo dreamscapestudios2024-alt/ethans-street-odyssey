@@ -34,7 +34,7 @@ The export is single-threaded (no SharedArrayBuffer), which is what GitHub Pages
 | Ollie / jump (hold = higher) | `Space`, `W` or `↑` |
 | Drop off a rail | `S` / `↓` |
 | Restart | `R` |
-| Music on/off | `M` |
+| Mute / unmute all audio | `M` or the "Mute audio" checkbox (top right) |
 
 ## What's implemented
 - Ethan (`CharacterBody2D`) with an explicit state machine: idle, push, cruise, speed, brake,

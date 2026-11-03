@@ -14,8 +14,9 @@ func _ready() -> void:
 	_banner = _label(Vector2(0, 220), 72)
 	_banner.size = Vector2(1920, 100)
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	add_child(MusicToggle.new())
 	var help := _label(Vector2(40, 990), 24)
-	help.text = "A/D or Left/Right: push & brake    Space: jump (hold = higher)    S: crouch    Shift+brake: drift    R: restart    M: music"
+	help.text = "A/D or Left/Right: push & brake    Space: jump (hold = higher)    S: crouch    Shift+brake: drift    R: restart"
 
 func _label(pos: Vector2, size: int) -> Label:
 	var l := Label.new()
