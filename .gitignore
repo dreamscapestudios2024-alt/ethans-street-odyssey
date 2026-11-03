@@ -1,0 +1,9 @@
+.godot/
+.import/
+build/
+export.cfg
+*.translation
+.mono/
+data_*/
+.DS_Store
+*.tmp
