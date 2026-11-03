@@ -34,6 +34,7 @@ const HAZARD_LAYER := 4  # bit value for physics layer 3
 @export var step_width: float = 70.0
 @export var step_height: float = 34.0
 @export var rail_score_multiplier: float = 1.0
+@export var use_art: bool = true  ## use art from StreetArt when available (else placeholder drawing)
 @export_group("Optional production art (PNG, side-on)")
 @export var texture_left: Texture2D
 @export var texture_middle: Texture2D
@@ -64,14 +65,46 @@ func _request_rebuild() -> void:
 func is_extendable() -> bool:
 	return type in EXTENDABLE
 
+func _art() -> Texture2D:
+	return StreetArt.texture(type) if use_art else null
+
+func _art_spec() -> Dictionary:
+	return StreetArt.spec(type) if (use_art and _art() != null) else {}
+
 func effective_height() -> float:
-	return height if height > 0.0 else float(DEFAULT_HEIGHTS.get(type, 0.0))
+	if height > 0.0:
+		return height
+	var sp := _art_spec()
+	if sp.has("solid_top") and type != Type.SIDEWALK:
+		var t := _art()
+		return (t.get_height() - float(sp["solid_top"])) * float(sp["scale"])
+	return float(DEFAULT_HEIGHTS.get(type, 0.0))
+
+func effective_rail_height() -> float:
+	var sp := _art_spec()
+	if sp.has("bar_top"):
+		return (_art().get_height() - float(sp["bar_top"])) * float(sp["scale"])
+	return rail_height
+
+func _stairs_dims() -> Vector3:
+	## (step_count, step_width, step_height) - from art when present.
+	var sp := _art_spec()
+	if type == Type.STAIRS_RAIL and sp.has("treads"):
+		var t := _art()
+		var n := int(sp["treads"])
+		var sc := float(sp["scale"])
+		return Vector3(n, (t.get_width() - float(sp["block_x"])) * sc / n, (float(sp["floor_y"]) - float(sp["top_y"])) * sc / n)
+	return Vector3(step_count, step_width, step_height)
 
 func effective_length() -> float:
 	match type:
 		Type.STAIRS, Type.STAIRS_RAIL:
-			return step_count * step_width
+			var d := _stairs_dims()
+			return d.x * d.y
 		Type.BARRIER, Type.BIN, Type.POTHOLE:
+			var t := _art()
+			if t != null and type != Type.POTHOLE:
+				return t.get_width() * effective_height() / t.get_height()
 			return float(FIXED_LENGTHS[type])
 	return length
 
@@ -82,7 +115,8 @@ func end_offset() -> Vector2:
 		Type.RAMP_DOWN:
 			dy = effective_height()
 		Type.STAIRS, Type.STAIRS_RAIL:
-			dy = step_count * step_height
+			var d := _stairs_dims()
+			dy = d.x * d.z
 	return Vector2(effective_length(), dy)
 
 ## Height (px above ground line) of the highest walkable surface.
@@ -110,8 +144,10 @@ func rebuild() -> void:
 		Type.RAMP_DOWN:
 			_add_poly([Vector2(0, 0), Vector2(w, h), Vector2(w, ground_depth), Vector2(0, ground_depth)])
 		Type.STAIRS, Type.STAIRS_RAIL:
-			for i in range(1, step_count + 1):
-				_add_rect((i - 1) * step_width, i * step_height, step_width, ground_depth)
+			# Tread 1 is flush with the ground on the left; the floor sits n*step_height lower.
+			var d := _stairs_dims()
+			for i in range(1, int(d.x) + 1):
+				_add_rect((i - 1) * d.y, (i - 1) * d.z, d.y, ground_depth + d.x * d.z)
 	match type:
 		Type.BARRIER:
 			_add_rect(0.0, -h, w, h)
@@ -120,13 +156,29 @@ func rebuild() -> void:
 		Type.LEDGE:
 			_add_rail(Vector2(0, -h), Vector2(w, -h), 0.9)
 		Type.HANDRAIL:
-			_add_rail(Vector2(0, -rail_height), Vector2(w, -rail_height), 1.0)
+			var rh := effective_rail_height()
+			_add_rail(Vector2(0, -rh), Vector2(w, -rh), 1.0)
 		Type.STAIRS_RAIL:
-			_add_rail(Vector2(0, -rail_height), Vector2(w, step_count * step_height - rail_height), 1.4)
+			_add_stairs_rail(w)
 		Type.POTHOLE:
 			_add_hazard(Rect2(12, -20, w - 24, 50))
 	_built = true
 	queue_redraw()
+
+func _add_stairs_rail(w: float) -> void:
+	var d := _stairs_dims()
+	var sp := _art_spec()
+	var a := Vector2(0, -rail_height)
+	var b := Vector2(w, d.x * d.z - rail_height)
+	if sp.has("rail_hi"):
+		var t := _art()
+		var sc := float(sp["scale"])
+		# unflip: x' = art_width - x; module x = (x' - 0) * sc ; module y = (y - top_y) * sc
+		var hi: Vector2 = sp["rail_hi"]
+		var lo: Vector2 = sp["rail_lo"]
+		a = Vector2((t.get_width() - hi.x) * sc, (hi.y - float(sp["top_y"])) * sc)
+		b = Vector2((t.get_width() - lo.x) * sc, (lo.y - float(sp["top_y"])) * sc)
+	_add_rail(a, b, 1.4)
 
 func _add_rect(x: float, y: float, w: float, h: float) -> void:
 	var shape := RectangleShape2D.new()
@@ -182,6 +234,8 @@ const C_PLANT := Color("4d9a4a")
 func _draw() -> void:
 	var w := effective_length()
 	var h := effective_height()
+	if _draw_art(w, h):
+		return
 	if texture_single != null:
 		draw_texture(texture_single, Vector2(0, -texture_single.get_height() + 0.0))
 		return
@@ -232,6 +286,79 @@ func _draw() -> void:
 			draw_rect(Rect2(-4, -h - 8, w + 8, 10), Color("2c5a40"))
 	if type in [Type.BARRIER, Type.BIN]:
 		_draw_slab(w, 0.0, C_CONCRETE)
+
+const GROUND_FILL := Color("8d8d98")
+const TILE_OVERLAP := 5.0  ## px: tiles overlap slightly so outlines meet without gaps
+
+func _draw_tiles(tex: Texture2D, sc: float, x0: float, x1: float, y: float) -> void:
+	var tw := tex.get_width() * sc
+	var th := tex.get_height() * sc
+	var x := x0
+	var step := maxf(tw - TILE_OVERLAP, 1.0)
+	while x < x1 - 0.01:
+		var draw_w := minf(tw, x1 - x)
+		var src := Rect2(0, 0, draw_w / sc, tex.get_height())
+		draw_texture_rect_region(tex, Rect2(x, y, draw_w, th), src)
+		x += step
+
+func _draw_ground(w: float) -> void:
+	var g := StreetArt.ground_texture()
+	if g == null:
+		draw_rect(Rect2(0, 0, w, ground_depth), GROUND_FILL)
+		return
+	var sp := StreetArt.spec(Type.SIDEWALK)
+	var sc := float(sp["scale"])
+	var top := -float(sp["solid_top"]) * sc
+	draw_rect(Rect2(0, 4.0, w, ground_depth), GROUND_FILL)  # also fills seams between slab tiles
+	_draw_tiles(g, sc, 0.0, w, top)
+
+func _draw_art_rect(tex: Texture2D, rect: Rect2, flip_h: bool) -> void:
+	if not flip_h:
+		draw_texture_rect(tex, rect, false)
+		return
+	draw_set_transform(Vector2(rect.position.x + rect.size.x, rect.position.y), 0.0, Vector2(-1.0, 1.0))
+	draw_texture_rect(tex, Rect2(Vector2.ZERO, rect.size), false)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+## Draws production art. Returns false to fall back to the placeholder drawing.
+func _draw_art(w: float, h: float) -> bool:
+	var tex := _art()
+	if tex == null:
+		return false
+	var sp := _art_spec()
+	var sc: float = float(sp.get("scale", 1.0))
+	match type:
+		Type.SIDEWALK:
+			_draw_ground(w)
+		Type.BRICK_WALL, Type.GARDEN_BED, Type.LEDGE:
+			_draw_ground(w)
+			_draw_tiles(tex, sc, 0.0, w, -h - float(sp["solid_top"]) * sc)
+		Type.HANDRAIL:
+			_draw_ground(w)
+			_draw_tiles(tex, sc, 0.0, w, -effective_rail_height() - float(sp["bar_top"]) * sc)
+		Type.RAMP_UP, Type.RAMP_DOWN:
+			var flip: bool = bool(sp.get("flip", false))
+			var rect := Rect2(0, -h, w, h) if type == Type.RAMP_UP else Rect2(0, 0, w, h)
+			if type == Type.RAMP_DOWN:
+				draw_rect(Rect2(0, h - 2.0, w, ground_depth), GROUND_FILL)
+			else:
+				draw_rect(Rect2(0, -2.0, w, ground_depth), GROUND_FILL)
+			_draw_art_rect(tex, rect, flip)
+		Type.BARRIER, Type.BIN:
+			_draw_ground(w)
+			draw_texture_rect(tex, Rect2(0, -h, w, h), false)
+		Type.STAIRS_RAIL:
+			var d := _stairs_dims()
+			draw_rect(Rect2(0, d.x * d.z - 2.0, w + 60.0, ground_depth), GROUND_FILL)
+			for i in range(int(d.x)):  # solid fill behind the art, matching the stepped collision
+				draw_rect(Rect2(i * d.y, i * d.z + 4.0, d.y + 1.0, d.x * d.z), GROUND_FILL)
+			# flipped: art is anchored so its top tread surface is y=0 and its stair block starts at x=0
+			var tw := tex.get_width() * sc
+			var th := tex.get_height() * sc
+			_draw_art_rect(tex, Rect2(0, -float(sp["top_y"]) * sc, tw, th), true)
+		_:
+			return false
+	return true
 
 func _draw_slab(w: float, up: float, col: Color) -> void:
 	draw_rect(Rect2(0, -up, w, 70 + up), col)

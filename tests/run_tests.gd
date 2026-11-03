@@ -59,9 +59,9 @@ func test_modules() -> void:
 	check(st.end_offset() == Vector2(350, 150), "stairs descend left-to-right")
 	check(st.get_child_count() == 5, "one collider per step")
 	var ledge := _module({"type": T.LEDGE, "length": 600.0})
-	check(ledge.rail != null and ledge.rail.end_point == Vector2(600, -56), "ledge has grind rail on top")
+	check(ledge.rail != null and is_equal_approx(ledge.rail.end_point.y, -ledge.surface_height()) and ledge.rail.end_point.x == 600.0, "ledge has grind rail on its top edge")
 	var bed := _module({"type": T.GARDEN_BED})
-	check(bed.rail == null and bed.surface_height() == 64.0, "garden bed solid, not grindable")
+	check(bed.rail == null and bed.surface_height() > 40.0, "garden bed solid, not grindable")
 	check(_module({"type": T.RAMP_DOWN, "length": 300.0}).end_offset().y == 110.0, "descending ramp drops cursor")
 	check(_module({"type": T.POTHOLE}).hazard_area != null, "pothole hazard area")
 	var course := CourseBuilder.new()
@@ -70,8 +70,6 @@ func test_modules() -> void:
 	for i in range(1, course.modules.size()):
 		var prev := course.modules[i - 1]
 		check(course.modules[i].position.is_equal_approx(prev.position + prev.end_offset()), "module %d aligned" % i)
-		if _fails > 0:
-			break
 
 func test_rail() -> void:
 	print("GrindRail")
@@ -131,19 +129,26 @@ func test_gameplay() -> void:
 	check(e.is_on_floor() and e.state != Ethan.State.FALL, "lands again")
 	check(top_y < -20.0, "left the ground")
 
-	# Jump onto the garden bed (x = 1800..2320, top y = -64)
-	e.respawn(Vector2(1600, 0))
+	# Jump onto the garden bed
+	var bed: StreetModule
+	for m in lvl.course.modules:
+		if m.type == StreetModule.Type.GARDEN_BED:
+			bed = m
+	var bx0 := bed.position.x
+	var bx1 := bx0 + bed.effective_length()
+	e.respawn(Vector2(bx0 - 200.0, 0))
 	await _step(20)
 	e.speed = 420.0
 	Input.action_press("jump")
 	await _step(45)  # hold ~0.37s for a full-height ollie
 	Input.action_release("jump")
 	await _step(110)
-	check(e.global_position.x > 1800.0 and e.global_position.x < 2320.0, "over the bed (x %d)" % int(e.global_position.x))
-	check(is_equal_approx(snappedf(e.global_position.y, 1.0), -64.0), "landed on elevated bed top (y %.1f, %s)" % [e.global_position.y, Ethan.State.keys()[e.state]])
+	check(e.global_position.x > bx0 and e.global_position.x < bx1, "over the bed (x %d, bed %d..%d)" % [int(e.global_position.x), int(bx0), int(bx1)])
+	check(absf(e.global_position.y + bed.surface_height()) < 1.5, "landed on elevated bed top (y %.1f vs -%.1f, %s)" % [e.global_position.y, bed.surface_height(), Ethan.State.keys()[e.state]])
 
 	# Hit the bed wall at speed -> fall and recover
-	e.respawn(Vector2(1500, 0))
+	e.respawn(Vector2(bx0 - 400.0, 0))
+	await _step(20)
 	e.speed = 600.0
 	await _step(120)
 	check(e.state == Ethan.State.FALL, "crash into wall causes fall")
@@ -211,5 +216,19 @@ func test_gameplay() -> void:
 	await _step(240)
 	check(e.global_position.x > stairs.position.x + stairs.end_offset().x - 50.0, "passes down the stairs")
 	check(e.global_position.y > 100.0, "ends lower than the start (y %d)" % int(e.global_position.y))
+	# Stairs handrail grind
+	e.respawn(Vector2(stairs.position.x - 180.0, stairs.position.y))
+	await _step(20)
+	e.speed = 520.0
+	Input.action_press("jump")
+	var stair_grind := false
+	for i in 300:
+		await physics_frame
+		stair_grind = stair_grind or e.state == Ethan.State.GRIND
+		if i == 50:
+			Input.action_release("jump")
+	check(stair_grind, "grinds the stairs handrail")
+	check(e.state != Ethan.State.FALL, "no fall after stairs rail")
+	Input.action_release("jump")
 	lvl.queue_free()
 	await _step(2)

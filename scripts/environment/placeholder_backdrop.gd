@@ -14,25 +14,28 @@ func _draw() -> void:
 	if texture != null:
 		draw_texture(texture, texture_position)
 		return
+	# Placeholder base first (sky/ocean/hills), then production sprites on top when present.
 	match kind:
 		Kind.SKY_LANDMARKS: _draw_landmarks()
-		Kind.LOCAL_SCENERY: _draw_scenery()
-		Kind.FOREGROUND: _draw_foreground()
+		Kind.LOCAL_SCENERY: pass
+		Kind.FOREGROUND: pass
+	var sprites := BackdropArt.layout(kind, tile_width)
+	for it: Dictionary in sprites:
+		var tex: Texture2D = it["tex"]
+		var sc: float = it["scale"]
+		draw_texture_rect(tex, Rect2(it["pos"], tex.get_size() * sc), false)
+	if sprites.is_empty():
+		match kind:
+			Kind.LOCAL_SCENERY: _draw_scenery()
+			Kind.FOREGROUND: _draw_foreground()
 
 func _draw_landmarks() -> void:
-	# Ocean horizon, distant pier, hills with a Hollywood-sign nod.
-	draw_rect(Rect2(0, 560, tile_width, 600), Color("3b8fc4"))
+	# Ocean horizon and soft hills; pier/lifeguard sprites are added by BackdropArt.
+	draw_rect(Rect2(0, 560, tile_width, 800), Color("3b8fc4"))
 	draw_rect(Rect2(0, 556, tile_width, 8), Color("a6d8f0"))
 	for i in 6:
 		var x := i * tile_width / 6.0
 		draw_colored_polygon(PackedVector2Array([Vector2(x, 556), Vector2(x + 260, 420), Vector2(x + 520, 556)]), Color("8aa56a").darkened(0.1 * (i % 2)))
-	draw_rect(Rect2(tile_width * 0.55, 520, 520, 14), Color("6e5a46"))  # pier deck
-	for i in 9:
-		draw_rect(Rect2(tile_width * 0.55 + i * 60.0, 534, 8, 40), Color("54443a"))
-	var sx := tile_width * 0.18
-	for ch in "VENICE":
-		draw_rect(Rect2(sx, 462, 34, 44), Color.WHITE)
-		sx += 44.0
 	draw_circle(Vector2(tile_width * 0.8, 200), 90.0, Color("ffe08a"))
 
 func _draw_scenery() -> void:
@@ -44,25 +47,11 @@ func _draw_scenery() -> void:
 		var h := 300.0 + (i % 4) * 60.0
 		draw_rect(Rect2(x, 820 - h, w, h), cols[i % cols.size()])
 		draw_rect(Rect2(x, 820 - h, w, 14), cols[i % cols.size()].darkened(0.25))
-		for wx in range(int(x) + 30, int(x + w) - 70, 110):
-			draw_rect(Rect2(wx, 820 - h + 60, 70, 90), Color("39566e"))
-		# palm tree between shops
-		var px := x + w + 40.0
-		draw_line(Vector2(px, 820), Vector2(px + 10, 480), Color("7a5a3a"), 14.0)
-		for a in 5:
-			draw_line(Vector2(px + 10, 480), Vector2(px + 10 + cos(a * 1.2 - 2.4) * 120, 480 + sin(a * 1.2 - 2.4) * 70 + 40), Color("3f8f4a"), 10.0)
 		x += w + 140.0
 		i += 1
 
 func _draw_foreground() -> void:
 	var x := 600.0
 	while x < tile_width:
-		# lamp post
 		draw_rect(Rect2(x, 380, 18, 760), Color("2c3138"))
-		draw_rect(Rect2(x - 40, 370, 100, 14), Color("2c3138"))
-		draw_circle(Vector2(x - 30, 392), 14.0, Color("ffe9a0"))
 		x += 1700.0
-	var gx := 200.0
-	while gx < tile_width:
-		draw_circle(Vector2(gx, 1090), 70.0, Color("2f7f3c", 0.9))
-		gx += 900.0

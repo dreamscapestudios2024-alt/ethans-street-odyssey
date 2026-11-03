@@ -41,7 +41,7 @@ The export is single-threaded (no SharedArrayBuffer), which is what GitHub Pages
 - 12 reusable street modules (`StreetModule`) with 3-piece extendable art support, side-on collision.
 - Five-layer world: parallax 0.2× / 0.4×, gameplay 1.0×, entities in world space, foreground 1.5×.
 - Speed-based camera look-ahead; score HUD; fall/recovery; restart.
-- Placeholder animations (AnimatedSprite2D + SpriteFrames) that auto-swap to PNGs you drop in.
+- Production art: Ethan's animation frames, street modules and Venice Beach parallax layers are cut from the supplied sheets (`tools/`). Missing art falls back to generated placeholders.
 - Headless test suite (`tests/run_tests.gd`) incl. gameplay simulation; GitHub Actions CI and Pages deploy.
 
 ## Run tests
@@ -50,8 +50,9 @@ godot --headless --path . --script tests/run_tests.gd
 ```
 
 ## Known limitations
-- All art is procedural placeholder; concept sheets are not yet sliced into production sprites (`tools/slice_sheet.py`, see `docs/asset_specifications.md`).
-- No audio yet (music is available in the project Drive folder; SFX pending).
+- Still placeholder: pothole, plain stairs (no rail), Layer-1 sky/ocean/hills, ground fill under the sidewalk. Ethan has no animations for kickflip/180/boardslide yet (frames exist in the source sheets).
+- No audio yet (songs exist on the creative director's Mac; SFX pending).
+- No touch controls yet (needed for phones, see roadmap).
 - Ethan only travels left→right; no reverse. Only a basic 50-50 grind.
 - Not yet play-felt on a real display by the author of this commit: physics tuned via headless simulation only. Expect tuning passes.
 - Web build untested locally (export templates not available in the build sandbox); CI performs it.

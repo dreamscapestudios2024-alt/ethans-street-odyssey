@@ -5,11 +5,18 @@
 - **Backgrounds**: `PlaceholderBackdrop.texture` per layer (layer1/2/5 folders), horizontally tileable at tile width 3840 px for seamless mirroring.
 - Audio: `assets/audio/` (OGG for music/SFX).
 
-## Source material (Google Drive folder, supplied by the creative director)
-Ethan 1.jpeg, Ethan 2.jpeg, Street Worker.jpeg (character concepts, JPEG = no alpha);
-Elements – Transparent Layer 2/3 elements.png, Elements – Transparent reusable Street elements.png,
-Elements – Loopable Level 3 elements.png; Backgrounds – Generic 1.png, Backgrounds – Hollywood Boulevard.png;
-plus songs. These were NOT importable in the build sandbox (Drive blocked), so none are used yet.
-Workflow: download them, run `python3 tools/slice_sheet.py "<sheet>.png" out_dir`
-(validates real alpha first; refuses opaque sheets), review `slices.json`, check each piece is
-side-on, then copy into the folders above. JPEG sheets need a chroma-key or re-export.
+## Source sheets and how they became game assets
+All originals are in `assets/source_sheets/` (supplied by the creative director). Generated, committed outputs:
+- **Ethan** (`assets/characters/ethan/<anim>_NN.png`): `python3 tools/extract_ethan_frames.py` cuts frames from `FRAMES- Ethans Core Movements 2/3`,
+  removes labels/dividers, aligns the board contact point to the bottom-centre and applies per-animation scale factors (edit `SCALE` in the script).
+  Unused so far: kickflip, 180, boardslide, nosegrind, celebrate, dance, profile and splash sheets.
+- **Street modules** (`assets/street_modules/`): cut from `Elements - Transparent reusable Street elements`. Measurements (solid top, rail lines, stair
+  geometry) live in `scripts/environment/street_art.gd`. `Elements - Loopable Level 3 elements` has richer tileable pieces (end caps, manholes, pothole,
+  blue/red rails, half-pipes) not yet used.
+- **Backgrounds** (`assets/backgrounds/layer1|2|5`): cut from `Elements - Transparent Layer 2 elements` and the street sheet (lamps). Layout in `scripts/environment/backdrop_art.gd`.
+  `Backgrounds - *.png` (Venice, Hollywood, Crenshaw, Night, Generic) are opaque full-scene strips - not used yet; the Night variant suits a later time-of-day pass.
+- Audio: songs (mp3) are kept off the repo for now; SFX pending.
+
+## Lessons / gotchas
+- Textures used inside `_draw()` must be strongly referenced (static cache); a local `load()` result is freed before the frame renders and draws as a white rectangle.
+- JPEG concept sheets (Ethan 1/2, Street Worker) have no alpha and were not used.
