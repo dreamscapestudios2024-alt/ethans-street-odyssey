@@ -33,7 +33,7 @@ func _ready() -> void:
 	camera = FollowCamera.new()
 	camera.name = "FollowCamera"
 	camera.target = ethan
-	camera.zoom = Vector2(1.35, 1.35)
+	camera.zoom = Vector2(1.5, 1.5)
 	add_child(camera)
 	camera.make_current()
 	camera.snap_to_target()

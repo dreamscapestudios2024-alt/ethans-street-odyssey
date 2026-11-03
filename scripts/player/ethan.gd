@@ -18,6 +18,8 @@ signal grind_ended(rail: GrindRail, duration: float, by_jump: bool)
 signal fell(reason: String)
 signal recovered
 
+@export_group("Visuals")
+@export var sprite_scale: float = 0.95  ## scales production art to fit the 110px collision body
 @export_group("Ground")
 @export var max_speed: float = 900.0
 @export var push_accel: float = 520.0
@@ -91,7 +93,8 @@ func _ready() -> void:
 	sprite.sprite_frames = PlaceholderFrames.build()
 	var tex := sprite.sprite_frames.get_frame_texture("idle", 0)
 	sprite.centered = true
-	sprite.offset = Vector2(0, -tex.get_height() * 0.5)  # sprite bottom == origin
+	sprite.scale = Vector2(sprite_scale, sprite_scale)
+	sprite.offset = Vector2(0, -tex.get_height() * 0.5)  # sprite bottom == origin (feet)
 	sprite.play("idle")
 
 # --- Public API --------------------------------------------------------------

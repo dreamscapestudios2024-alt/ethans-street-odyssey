@@ -6,11 +6,11 @@ extends RefCounted
 ## animation automatically. See docs/asset_specifications.md.
 
 const ANIMATIONS := {
-	# name: [frame_count, fps, loop]
-	"idle": [2, 3.0, true], "push": [4, 8.0, true], "cruise": [2, 5.0, true],
-	"speed": [2, 8.0, true], "brake": [2, 6.0, true], "drift": [2, 6.0, true],
-	"crouch": [1, 1.0, true], "jump": [2, 6.0, false], "airborne": [2, 4.0, true],
-	"landing": [1, 1.0, false], "grind": [2, 6.0, true], "fall": [3, 6.0, false],
+	# name: [placeholder_frame_count, fps, loop]  (production PNG count may differ)
+	"idle": [2, 4.0, true], "push": [4, 12.0, true], "cruise": [2, 8.0, true],
+	"speed": [2, 12.0, true], "brake": [2, 10.0, true], "drift": [2, 10.0, true],
+	"crouch": [1, 8.0, false], "jump": [2, 12.0, false], "airborne": [2, 6.0, true],
+	"landing": [1, 14.0, false], "grind": [2, 8.0, true], "fall": [3, 8.0, false],
 }
 const ASSET_DIR := "res://assets/characters/ethan/"
 const FRAME_SIZE := Vector2i(128, 128)  ## placeholder only; production art may differ
