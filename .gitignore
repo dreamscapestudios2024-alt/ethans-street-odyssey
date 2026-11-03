@@ -7,3 +7,6 @@ export.cfg
 data_*/
 .DS_Store
 *.tmp
+
+# Godot generates these for the raw source sheets; they are not game assets
+assets/source_sheets/*.import
