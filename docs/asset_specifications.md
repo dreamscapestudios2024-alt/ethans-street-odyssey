@@ -9,6 +9,8 @@
 All originals are in `assets/source_sheets/` (supplied by the creative director). Generated, committed outputs:
 - **Ethan** (`assets/characters/ethan/<anim>_NN.png`): `python3 tools/extract_ethan_frames.py` cuts frames from `FRAMES- Ethans Core Movements 2/3`,
   removes labels/dividers, aligns the board contact point to the bottom-centre and applies per-animation scale factors (edit `SCALE` in the script).
+  `Elements - Kick Push` provides the push (standard) and push_fast (aggressive, used above `fast_push_speed`) cycles; `Elements - Grinding`
+  (rail row, rail cut away so feet sit on the rail line) provides the grind loop. The ledge and planter rows of that sheet are unused.
   Unused so far: kickflip, 180, boardslide, nosegrind, celebrate, dance, profile and splash sheets.
 - **Street modules** (`assets/street_modules/`): cut from `Elements - Transparent reusable Street elements`. Measurements (solid top, rail lines, stair
   geometry) live in `scripts/environment/street_art.gd`. `Elements - Loopable Level 3 elements` has richer tileable pieces (end caps, manholes, pothole,

@@ -31,6 +31,7 @@ signal recovered
 @export var idle_speed: float = 8.0
 @export var cruise_speed: float = 120.0
 @export var speed_threshold: float = 640.0
+@export var fast_push_speed: float = 380.0  ## above this the PUSH state plays the aggressive kick-push
 @export var slope_influence: float = 0.25
 @export_group("Jump")
 @export var jump_speed: float = 880.0
@@ -362,8 +363,16 @@ func animation_for_state(s: State) -> String:
 
 func _update_visuals(delta: float) -> void:
 	var anim := animation_for_state(state)
+	if state == State.PUSH and speed >= fast_push_speed and sprite.sprite_frames.has_animation("push_fast"):
+		anim = "push_fast"
 	if sprite.animation != anim:
+		# keep the walk-cycle phase when swapping between the two push variants
+		var frame := sprite.frame
+		var progress := sprite.frame_progress
+		var swap_push := (anim == "push" or anim == "push_fast") and (sprite.animation == "push" or sprite.animation == "push_fast")
 		sprite.play(anim)
+		if swap_push:
+			sprite.set_frame_and_progress(mini(frame, sprite.sprite_frames.get_frame_count(anim) - 1), progress)
 	if state == State.PUSH or state == State.CRUISE or state == State.SPEED:
 		sprite.speed_scale = clampf(0.6 + speed / 500.0, 0.6, 2.2)
 	else:

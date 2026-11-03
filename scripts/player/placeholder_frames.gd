@@ -7,7 +7,7 @@ extends RefCounted
 
 const ANIMATIONS := {
 	# name: [placeholder_frame_count, fps, loop]  (production PNG count may differ)
-	"idle": [2, 4.0, true], "push": [4, 12.0, true], "cruise": [2, 8.0, true],
+	"idle": [2, 4.0, true], "push": [4, 12.0, true], "push_fast": [4, 15.0, true], "cruise": [2, 8.0, true],
 	"speed": [2, 12.0, true], "brake": [2, 10.0, true], "drift": [2, 10.0, true],
 	"crouch": [1, 8.0, false], "jump": [2, 12.0, false], "airborne": [2, 6.0, true],
 	"landing": [1, 14.0, false], "grind": [2, 8.0, true], "fall": [3, 8.0, false],

@@ -17,6 +17,8 @@ SRC = os.path.join(ROOT, "assets/source_sheets")
 OUT = os.path.join(ROOT, "assets/characters/ethan")
 SHEET2 = os.path.join(SRC, "FRAMES- Ethans Core Movements 2.png")
 SHEET3 = os.path.join(SRC, "FRAMES- Ethans Core Movements 3.png")
+KICKPUSH = os.path.join(SRC, "Elements - Kick Push.png")
+GRINDING = os.path.join(SRC, "Elements - Grinding.png")
 
 ROW_EDGES = [0, 190, 375, 548, 703, 860, 1024]
 SPLIT_X = [535, 758, 758, 758, 758, 548]
@@ -82,6 +84,40 @@ def sheet_frames(path, rows_filter=None):
     im, lab, comps = load_components(path)
     return im, lab, comps
 
+def kick_push_frames():
+    """Two rows of 8 clean figures: standard (top) and fast/aggressive (bottom)."""
+    im, lab, comps = load_components(KICKPUSH)
+    figs = [c for c in comps if (c["box"][3] - c["box"][1]) > 180]   # drops the label banners
+    top = sorted([c for c in figs if (c["box"][1] + c["box"][3]) / 2 < 500], key=lambda c: c["box"][0])
+    bot = sorted([c for c in figs if (c["box"][1] + c["box"][3]) / 2 >= 500], key=lambda c: c["box"][0])
+    return ([frame_image(im, lab, [c["id"]]) for c in top], [frame_image(im, lab, [c["id"]]) for c in bot])
+
+def grind_frames(row=0):
+    """Rail row: cut the rail away (the game draws its own) so feet sit on the rail line."""
+    im = Image.open(GRINDING).convert("RGBA")
+    arr = np.array(im)
+    alpha = arr[:, :, 3] > 24
+    lab, n = ndi.label(alpha, structure=np.ones((3, 3)))
+    objs = [sl for sl in ndi.find_objects(lab) if (sl[1].stop - sl[1].start) > 800]
+    objs.sort(key=lambda sl: sl[0].start)
+    sl = objs[row]
+    x0, x1, y0, y1 = sl[1].start, sl[1].stop, sl[0].start, sl[0].stop
+    region = alpha[y0:y1, x0:x1]
+    cover = region.sum(axis=1) / region.shape[1]
+    y_cut = y0 + int(np.argmax(cover > 0.8))       # first row where the rail/ledge spans (nearly) the full width
+    keep = np.zeros_like(alpha)
+    keep[y0:y_cut, x0:x1] = alpha[y0:y_cut, x0:x1]
+    arr2 = arr.copy()
+    arr2[~keep] = 0
+    im2 = Image.fromarray(arr2)
+    lab2, n2 = ndi.label(keep, structure=np.ones((3, 3)))
+    figs = []
+    for i, s2 in enumerate(ndi.find_objects(lab2), 1):
+        if int((lab2[s2] == i).sum()) > 4000:
+            figs.append((s2[1].start, i))
+    figs.sort()
+    return [frame_image(im2, lab2, [i]) for _, i in figs]
+
 def collect():
     frames = {}
     im, lab, comps = load_components(SHEET2)
@@ -110,12 +146,16 @@ def collect():
     frames["grind"] = [frame_image(im3, lab3, g["ids"]) for g in r0]
     crouch = [c for c in comps3 if 560 < (c["box"][1] + c["box"][3]) / 2 < 760 and c["box"][0] > 700]
     frames["crouch"] = [frame_image(im3, lab3, g["ids"]) for g in sorted(merge_frames(crouch), key=lambda g: g["x0"])]
+    # Newer, cleaner sheets override the older rough cuts for push and grind.
+    std, fast = kick_push_frames()
+    frames["push"], frames["push_fast"] = std, fast
+    frames["grind"] = grind_frames(0)[1:4]   # balanced mid-grind poses on the rail row, looped
     return frames
 
 # Source poses are drawn at different scales on different rows/sheets. Factors are chosen by eye so
 # Ethan's board and body read the same size in every animation (idle = 1.0). Tweak and re-run.
-SCALE = {"idle": 1.0, "push": 1.0, "cruise": 1.0, "speed": 1.0, "brake": 1.0, "drift": 1.0,
-         "ollie": 1.35, "landing": 1.3, "fall": 1.3, "grind": 0.68, "crouch": 0.68}
+SCALE = {"idle": 1.0, "push": 0.5, "push_fast": 0.5, "cruise": 1.0, "speed": 1.0, "brake": 1.0, "drift": 1.0,
+         "ollie": 1.35, "landing": 1.3, "fall": 1.3, "grind": 0.5, "crouch": 0.68}
 
 def normalize(frames):
     out = {}
