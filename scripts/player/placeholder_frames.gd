@@ -10,7 +10,12 @@ const ANIMATIONS := {
 	"idle": [2, 4.0, true], "push": [4, 12.0, true], "push_fast": [4, 15.0, true], "cruise": [2, 8.0, true],
 	"speed": [2, 12.0, true], "brake": [2, 10.0, true], "drift": [2, 10.0, true],
 	"crouch": [1, 8.0, false], "jump": [2, 12.0, false], "airborne": [2, 6.0, true],
-	"landing": [1, 14.0, false], "grind": [2, 8.0, true], "fall": [3, 9.0, false],
+	"landing": [1, 14.0, false], "grind": [2, 8.0, true], "fall": [3, 8.0, false],
+}
+## Optional per-frame hold times (relative to 1/fps) for production art with a matching frame count.
+## fall (12 frames): flail, tumble backwards, lie flat, rub head x2, kneel, push up, stand, pick up board, step on, ride.
+const FRAME_WEIGHTS := {
+	"fall": [1.8, 2.0, 2.4, 3.0, 3.0, 1.4, 1.2, 1.4, 1.5, 1.4, 1.2, 1.2],
 }
 const ASSET_DIR := "res://assets/characters/ethan/"
 const FRAME_SIZE := Vector2i(128, 128)  ## placeholder only; production art may differ
@@ -27,8 +32,10 @@ static func build() -> SpriteFrames:
 		if textures.is_empty():
 			for i in int(info[0]):
 				textures.append(ImageTexture.create_from_image(_draw_frame(anim, i)))
-		for t in textures:
-			sf.add_frame(anim, t)
+		var weights: Array = FRAME_WEIGHTS.get(anim, [])
+		var use_weights := weights.size() == textures.size()
+		for i in textures.size():
+			sf.add_frame(anim, textures[i], weights[i] if use_weights else 1.0)
 	return sf
 
 static func _load_production(anim: String) -> Array[Texture2D]:

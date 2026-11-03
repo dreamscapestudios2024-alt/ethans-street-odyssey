@@ -152,7 +152,7 @@ func test_gameplay() -> void:
 	e.speed = 600.0
 	await _step(120)
 	check(e.state == Ethan.State.FALL, "crash into wall causes fall")
-	await _step(200)
+	await _step(420)
 	check(e.state != Ethan.State.FALL, "recovers from fall")
 
 	# Handrail grind: find rail module
@@ -196,8 +196,10 @@ func test_gameplay() -> void:
 	e.speed = 300.0
 	await _step(150)
 	check(e.state == Ethan.State.FALL, "pothole causes fall")
-	await _step(200)
+	await _step(420)
 	check(e.state != Ethan.State.FALL, "recovers after pothole")
+	await _step(300)  # long enough for the post-recovery invulnerability to expire
+	check(e.state != Ethan.State.FALL, "does not fall again in the same pothole")
 
 	# Ramp: ride the kicker and get launched
 	e.respawn(Vector2(ramp.position.x - 200.0, 0.0))

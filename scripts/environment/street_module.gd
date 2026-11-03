@@ -220,7 +220,7 @@ func _physics_process(_delta: float) -> void:
 		return
 	for body in hazard_area.get_overlapping_bodies():
 		if body.has_method("hazard_hit"):
-			body.hazard_hit("pothole")
+			body.hazard_hit("pothole", global_position.x + effective_length() + 36.0)
 
 # --- Placeholder artwork ---------------------------------------------------
 

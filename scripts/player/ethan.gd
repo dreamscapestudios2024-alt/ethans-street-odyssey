@@ -74,6 +74,7 @@ var _rail_dist := 0.0
 var _rail_time := 0.0
 var _spawn := Vector2.ZERO
 var _in_hazard := false
+var _clear_x := NAN          ## x to end up at after a hazard wipeout (so he never re-falls in the same hole)
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 
@@ -109,10 +110,10 @@ func respawn(at: Vector2) -> void:
 	_invuln = 0.3  # stale hazard overlaps from the old position must not trigger
 	_set_state(State.IDLE)
 
-func hazard_hit(reason: String) -> void:
+func hazard_hit(reason: String, clear_x: float = NAN) -> void:
 	if state == State.FALL or state == State.GRIND or _invuln > 0.0:
 		return
-	_begin_fall(reason)
+	_begin_fall(reason, clear_x)
 
 func is_grounded_state() -> bool:
 	return state in [State.IDLE, State.PUSH, State.CRUISE, State.SPEED,
@@ -323,11 +324,15 @@ func _end_grind(by_jump: bool) -> void:
 
 # --- Fall / recovery ---------------------------------------------------------
 
-func _begin_fall(reason: String) -> void:
+func _begin_fall(reason: String, clear_x: float = NAN) -> void:
+	_clear_x = clear_x
 	# Stay down for the whole wipeout -> get-up animation (frames / fps), at least `fall_time`.
 	var anim_len := 0.0
 	if sprite != null and sprite.sprite_frames != null and sprite.sprite_frames.has_animation("fall"):
-		anim_len = sprite.sprite_frames.get_frame_count("fall") / maxf(sprite.sprite_frames.get_animation_speed("fall"), 0.1)
+		var total := 0.0
+		for i in sprite.sprite_frames.get_frame_count("fall"):
+			total += sprite.sprite_frames.get_frame_duration("fall", i)  # honours per-frame hold times
+		anim_len = total / maxf(sprite.sprite_frames.get_animation_speed("fall"), 0.1)
 	_fall_timer = maxf(fall_time, anim_len)
 	speed = 0.0
 	if _rail != null:
@@ -336,7 +341,11 @@ func _begin_fall(reason: String) -> void:
 	fell.emit(reason)
 
 func _physics_fall(delta: float) -> void:
-	velocity.x = MovementMath.approach(velocity.x, 0.0, fall_friction * delta)
+	if not is_nan(_clear_x) and global_position.x < _clear_x:
+		# Slide clear of the hazard over the remaining wipeout time.
+		velocity.x = clampf((_clear_x - global_position.x) / maxf(_fall_timer, 0.1), 0.0, 400.0)
+	else:
+		velocity.x = MovementMath.approach(velocity.x, 0.0, fall_friction * delta)
 	velocity.y = minf(velocity.y + gravity * delta, max_fall_speed)
 	move_and_slide()
 	_fall_timer -= delta
@@ -344,6 +353,7 @@ func _physics_fall(delta: float) -> void:
 		speed = 0.0
 		velocity = Vector2.ZERO
 		_invuln = recovery_invulnerable_time
+		_clear_x = NAN
 		_set_state(State.IDLE)
 		recovered.emit()
 
