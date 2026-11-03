@@ -19,6 +19,7 @@ SHEET2 = os.path.join(SRC, "FRAMES- Ethans Core Movements 2.png")
 SHEET3 = os.path.join(SRC, "FRAMES- Ethans Core Movements 3.png")
 KICKPUSH = os.path.join(SRC, "Elements - Kick Push.png")
 GRINDING = os.path.join(SRC, "Elements - Grinding.png")
+WIPEOUT = os.path.join(SRC, "Elements - Wipeout Recovery.png")
 
 ROW_EDGES = [0, 190, 375, 548, 703, 860, 1024]
 SPLIT_X = [535, 758, 758, 758, 758, 548]
@@ -118,6 +119,28 @@ def grind_frames(row=0):
     figs.sort()
     return [frame_image(im2, lab2, [i]) for _, i in figs]
 
+def wipeout_frames():
+    """12 frames (3 rows x 4): fall, lie, sit up, kneel, stand, pick up board, step on, ride off.
+    Each frame is a figure plus a loose skateboard; they are merged and anchored on the bbox centre."""
+    im, lab, comps = load_components(WIPEOUT, min_area=500)
+    bands = [(0, 330), (330, 600), (600, 941)]
+    out = []
+    for lo, hi in bands:
+        row = sorted([c for c in comps if lo <= (c["box"][1] + c["box"][3]) / 2 < hi], key=lambda c: c["box"][0])
+        groups = []
+        for c in row:
+            w = c["box"][2] - c["box"][0]
+            h = c["box"][3] - c["box"][1]
+            is_board = w < 135 and h < 70
+            if is_board and groups:
+                groups[-1].append(c["id"])
+            else:
+                groups.append([c["id"]])
+        for ids in groups:
+            img, _ = frame_image(im, lab, ids)
+            out.append((img, img.width // 2))
+    return out
+
 def collect():
     frames = {}
     im, lab, comps = load_components(SHEET2)
@@ -150,12 +173,13 @@ def collect():
     std, fast = kick_push_frames()
     frames["push"], frames["push_fast"] = std, fast
     frames["grind"] = grind_frames(0)[1:4]   # balanced mid-grind poses on the rail row, looped
+    frames["fall"] = wipeout_frames()        # full wipeout -> get up -> back on the board sequence
     return frames
 
 # Source poses are drawn at different scales on different rows/sheets. Factors are chosen by eye so
 # Ethan's board and body read the same size in every animation (idle = 1.0). Tweak and re-run.
 SCALE = {"idle": 1.0, "push": 0.5, "push_fast": 0.5, "cruise": 1.0, "speed": 1.0, "brake": 1.0, "drift": 1.0,
-         "ollie": 1.35, "landing": 1.3, "fall": 1.3, "grind": 0.5, "crouch": 0.68}
+         "ollie": 1.35, "landing": 1.3, "fall": 0.5, "grind": 0.5, "crouch": 0.68}
 
 def normalize(frames):
     out = {}

@@ -324,7 +324,11 @@ func _end_grind(by_jump: bool) -> void:
 # --- Fall / recovery ---------------------------------------------------------
 
 func _begin_fall(reason: String) -> void:
-	_fall_timer = fall_time
+	# Stay down for the whole wipeout -> get-up animation (frames / fps), at least `fall_time`.
+	var anim_len := 0.0
+	if sprite != null and sprite.sprite_frames != null and sprite.sprite_frames.has_animation("fall"):
+		anim_len = sprite.sprite_frames.get_frame_count("fall") / maxf(sprite.sprite_frames.get_animation_speed("fall"), 0.1)
+	_fall_timer = maxf(fall_time, anim_len)
 	speed = 0.0
 	if _rail != null:
 		_end_grind(false)
