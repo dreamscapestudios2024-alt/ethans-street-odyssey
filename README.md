@@ -24,6 +24,14 @@ One-time setup: GitHub repo → **Settings → Pages → Source: GitHub Actions*
 `https://dreamscapestudios2024-alt.github.io/ethans-street-odyssey/`.
 The export is single-threaded (no SharedArrayBuffer), which is what GitHub Pages supports.
 
+## Play on a phone (free, no app store)
+Open the web version in your phone's browser, then add it to your home screen so it runs full screen like an app:
+- **iPhone (Safari):** Share button -> *Add to Home Screen*.
+- **Android (Chrome):** menu (three dots) -> *Install app* / *Add to Home screen*.
+
+Turn the phone sideways. On-screen buttons appear automatically: Brake and Push on the left, Jump and Crouch on the right
+(Drift and Restart are the small ones). After an update, close the app fully and reopen it (twice if it still looks old).
+
 ## Controls
 | Action | Keys |
 |---|---|

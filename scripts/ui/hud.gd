@@ -6,6 +6,7 @@ var _score: Label
 var _info: Label
 var _banner: Label
 var _banner_time := 0.0
+var _help: Label
 
 func _ready() -> void:
 	layer = 20
@@ -16,6 +17,7 @@ func _ready() -> void:
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(MusicToggle.new())
 	var help := _label(Vector2(40, 990), 24)
+	_help = help
 	help.text = "A/D or Left/Right: push & brake    Space: jump (hold = higher)    S: crouch    Shift+brake: drift    R: restart"
 
 func _label(pos: Vector2, size: int) -> Label:
@@ -39,6 +41,12 @@ func show_banner(text: String, seconds: float = 1.2) -> void:
 	_banner_time = seconds
 
 func _process(delta: float) -> void:
+	# keyboard hint is noise on a phone: hide it once the touch controls are visible
+	var touch := false
+	for n in get_tree().get_nodes_in_group("touch_controls"):
+		touch = touch or (n as CanvasLayer).visible
+	if _help != null:
+		_help.visible = not touch
 	if _banner_time > 0.0:
 		_banner_time -= delta
 		if _banner_time <= 0.0:

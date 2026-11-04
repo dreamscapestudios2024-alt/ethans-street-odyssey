@@ -27,6 +27,7 @@ func _run() -> void:
 	root.remove_child(_holder)
 	_holder.free()
 	await test_splash()
+	await test_touch()
 	await test_gameplay()
 	print("\n%d checks, %d failed" % [_checks, _fails])
 	quit(1 if _fails > 0 else 0)
@@ -122,6 +123,69 @@ func test_splash() -> void:
 		music.set_muted(false)
 	root.remove_child(splash)
 	splash.free()
+
+func _frames(n: int) -> void:
+	for i in n:
+		await process_frame   # input events are delivered on rendered frames
+
+func _touch(index: int, canvas_pos: Vector2, pressed: bool) -> void:
+	var ev := InputEventScreenTouch.new()
+	ev.index = index
+	ev.pressed = pressed
+	ev.position = root.get_final_transform() * canvas_pos   # game canvas (1920x1080) -> window pixels
+	Input.parse_input_event(ev)
+
+func test_touch() -> void:
+	print("Touch controls")
+	var tc := TouchControls.new()
+	root.add_child(tc)
+	await _frames(4)
+	if not DisplayServer.is_touchscreen_available():
+		check(not tc.visible, "touch controls hidden on non-touch devices")
+		_touch(5, Vector2(960, 540), true)
+		await _frames(4)
+		_touch(5, Vector2(960, 540), false)
+		check(tc.visible, "first screen touch reveals them")
+	tc.show_controls()
+	check(tc.buttons.size() == 6, "all six buttons built")
+	for action: String in ["brake", "push", "drift", "jump", "crouch", "reset"]:
+		check(InputMap.has_action(action) and tc.buttons.has(action) and tc.buttons[action].action == action, "button -> action '%s'" % action)
+	var jump_pos: Vector2 = TouchControls.SPEC[3][2]
+	var push_pos: Vector2 = TouchControls.SPEC[1][2]
+	_touch(0, push_pos, true)                      # left thumb holds Push
+	await _frames(4)
+	check(Input.is_action_pressed("push") and not Input.is_action_pressed("jump"), "touching Push presses push only")
+	_touch(1, jump_pos, true)                      # right thumb taps Jump at the same time
+	await _frames(4)
+	check(Input.is_action_pressed("push") and Input.is_action_pressed("jump"), "multi-touch: Push + Jump together")
+	_touch(1, jump_pos, false)
+	await _frames(4)
+	check(Input.is_action_pressed("push") and not Input.is_action_pressed("jump"), "releasing Jump leaves Push held")
+	_touch(0, push_pos, false)
+	await _frames(4)
+	check(not Input.is_action_pressed("push"), "releasing Push releases it")
+	# touch drives Ethan exactly like the keyboard does
+	var lvl := await _new_level()
+	var e: Ethan = lvl.ethan
+	for n in get_nodes_in_group_safe("touch_controls"):
+		n.show_controls()
+	e.respawn(Vector2(-1500.0, 0.0))
+	await _frames(20)
+	_touch(0, push_pos, true)
+	await _step(150)
+	check(e.speed > 150.0, "holding the on-screen Push button accelerates Ethan (speed %d)" % int(e.speed))
+	_touch(1, jump_pos, true)
+	await _step(8)
+	check(e.state == Ethan.State.OLLIE or e.state == Ethan.State.AIRBORNE, "on-screen Jump makes Ethan ollie")
+	_touch(1, jump_pos, false)
+	_touch(0, push_pos, false)
+	await _step(150)
+	lvl.queue_free()
+	tc.queue_free()
+	await _frames(4)
+
+func get_nodes_in_group_safe(group: String) -> Array:
+	return get_nodes_in_group(group)
 
 func test_promenade() -> void:
 	print("Promenade background (Layer 2a)")

@@ -41,6 +41,7 @@ func _ready() -> void:
 
 	hud = Hud.new()
 	add_child(hud)
+	add_child(TouchControls.new())
 	GameState.reset_run()
 	GameState.score_changed.connect(hud.set_score)
 	hud.set_score(0)

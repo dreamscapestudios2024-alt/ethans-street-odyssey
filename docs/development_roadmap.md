@@ -10,6 +10,7 @@
 
 ## Platform notes
 - Desktop (macOS) and browser (GitHub Pages) are supported now.
-- **Phones**: feasible with the current Godot 4 project (GL Compatibility renderer, landscape 1920x1080). Needed: on-screen touch controls
+- **Phones (done for Stage 1)**: touch controls + installable web app (no store, no cost). Native iOS/Android store releases are deliberately out of scope until the game is closer to release.
+- Earlier note: feasible with the current Godot 4 project (GL Compatibility renderer, landscape 1920x1080). Needed: on-screen touch controls
   (push/brake/jump/crouch via a touch input layer feeding the same input actions), UI scaling check, performance pass on device, then iOS/Android export.
   Web build on phones can be tested first.
