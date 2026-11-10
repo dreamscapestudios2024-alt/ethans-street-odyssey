@@ -7,6 +7,7 @@ const FALL_Y := 2200.0
 
 var ethan: Ethan
 var gus: Npc
+var vendor: Npc
 var dialogue: DialogueBox
 var camera: FollowCamera
 var hud: Hud
@@ -15,6 +16,7 @@ var parallax := ParallaxWorld.new()
 var _grind_points := 0.0
 var _start := Vector2(200, 0)
 var level_end_x := 0.0
+var level_start_x := -1800.0
 
 func _ready() -> void:
 	parallax.build(self)
@@ -24,7 +26,8 @@ func _ready() -> void:
 	course = CourseBuilder.new(Vector2(-1800.0, 0.0))  # layout starts with a 1800px lead-in so x=0 is the start line
 	course.build(ground, VeniceBeachLayout.layout())
 	level_end_x = course.cursor.x
-	_add_end_stop(ground, level_end_x)
+	_add_end_stop(ground, level_end_x, 1.0)
+	_add_end_stop(ground, level_start_x, -1.0)
 
 	# Set dressing and NPCs sit behind Ethan (added before him) and never collide with him.
 	var npcs := Node2D.new()
@@ -36,6 +39,13 @@ func _ready() -> void:
 	gus.name = "Gus"
 	gus.position = Vector2(1170.0, 0.0)
 	npcs.add_child(gus)
+	vendor = Npc.new()                       # the hot dog stand sits behind Gus: skate backwards to reach it
+	vendor.name = "HotDogVendor"
+	vendor.dialogue_path = "res://resources/dialogue/vendor.json"
+	vendor.texture_path = "res://assets/characters/npcs/hotdog_vendor.png"
+	vendor.height_px = 165.0
+	vendor.position = Vector2(560.0, 0.0)
+	npcs.add_child(vendor)
 
 	var actors := Node2D.new()
 	actors.name = "Layer4_Characters"
@@ -56,8 +66,9 @@ func _ready() -> void:
 	add_child(hud)
 	dialogue = DialogueBox.new()
 	add_child(dialogue)
-	gus.setup(dialogue, ethan)
-	gus.conversation_finished.connect(_on_conversation_finished)
+	for n: Npc in [gus, vendor]:
+		n.setup(dialogue, ethan)
+		n.banner_requested.connect(func(text: String) -> void: hud.show_banner(text, 3.0))
 	add_child(TouchControls.new())
 	GameState.reset_run()
 	GameState.score_changed.connect(hud.set_score)
@@ -72,7 +83,7 @@ func _ready() -> void:
 	ethan.recovered.connect(func() -> void: hud.show_banner("Back up!", 0.8))
 
 ## Invisible wall so Ethan can never skate off the end of the demo into empty space.
-func _add_end_stop(parent: Node, x: float) -> void:
+func _add_end_stop(parent: Node, x: float, side: float) -> void:
 	var body := StaticBody2D.new()
 	body.name = "EndStop"
 	body.collision_layer = 1
@@ -81,7 +92,7 @@ func _add_end_stop(parent: Node, x: float) -> void:
 	shape.size = Vector2(60.0, 8000.0)
 	var cs := CollisionShape2D.new()
 	cs.shape = shape
-	cs.position = Vector2(x + 30.0 - 400.0, 0.0)        # 400px of runway before the true end; spans every ground height
+	cs.position = Vector2(x - side * 370.0, 0.0)        # 400px of runway before either end; spans every ground height
 	body.add_child(cs)
 	parent.add_child(body)
 
@@ -97,10 +108,6 @@ func _add_prop(parent: Node, path: String, base: Vector2, height_px: float) -> v
 	sp.z_index = -2
 	parent.add_child(sp)
 
-func _on_conversation_finished(npc_id: String, first_time: bool, reputation_gain: int) -> void:
-	if first_time:
-		hud.show_banner("Met %s!  +%d reputation" % [gus.display_name, reputation_gain], 2.2)
-
 func _on_grind_ended(rail: GrindRail, duration: float, _by_jump: bool) -> void:
 	var pts := int(duration * rail.score_per_second * rail.score_multiplier)
 	GameState.add_score(pts)
@@ -111,7 +118,16 @@ func _physics_process(_delta: float) -> void:
 		restart()
 	if ethan.global_position.x > level_end_x - 200.0:
 		hud.show_banner("END OF DEMO - press R to restart", 0.3)
+	hud.set_wallet("$%d    STREET %d    GANGSTA %d    MORAL %d" % [GameState.money, GameState.street_cred, GameState.gangsta_cred, GameState.moral_cred])
+	hud.set_objective(_objective_text())
 	hud.set_info("%s   speed %d" % [Ethan.State.keys()[ethan.state], int(ethan.current_speed())])
+
+func _objective_text() -> String:
+	if GameState.mission_state("gus_food") != "active":
+		return ""
+	if GameState.has_item("hot_dog"):
+		return "Objective: take the hot dog to Gus"
+	return "Objective: buy a hot dog from the stand (skate back, slow down beside the vendor)"
 
 func restart() -> void:
 	ethan.respawn(_start)

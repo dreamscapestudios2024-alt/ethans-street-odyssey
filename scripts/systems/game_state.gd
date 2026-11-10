@@ -14,6 +14,10 @@ var health: float = 100.0
 var energy: float = 100.0
 var mental_wellbeing: float = 100.0
 var reputation: int = 0
+var money: int = 20
+var street_cred: int = 0
+var gangsta_cred: int = 0
+var moral_cred: int = 0
 var followers: int = 0
 var backpack: Array[String] = []
 var relationships: Dictionary = {}  # npc_id -> int
@@ -34,7 +38,39 @@ func add_to_backpack(item_id: String) -> bool:
 	if backpack.size() >= BACKPACK_SLOTS:
 		return false
 	backpack.append(item_id)
+	stat_changed.emit("backpack", float(backpack.size()))
 	return true
+
+func has_item(item_id: String) -> bool:
+	return backpack.has(item_id)
+
+func remove_item(item_id: String) -> bool:
+	var i := backpack.find(item_id)
+	if i < 0:
+		return false
+	backpack.remove_at(i)
+	stat_changed.emit("backpack", float(backpack.size()))
+	return true
+
+func add_money(amount: int) -> void:
+	money += amount
+	stat_changed.emit("money", float(money))
+
+## kind: "street", "gangsta" or "moral"
+func add_cred(kind: String, amount: int) -> void:
+	match kind:
+		"street": street_cred += amount
+		"gangsta": gangsta_cred += amount
+		"moral": moral_cred += amount
+		_: return
+	stat_changed.emit(kind + "_cred", 0.0)
+
+func mission_state(mission_id: String) -> String:
+	return String(missions.get(mission_id, "none"))
+
+func set_mission(mission_id: String, state: String) -> void:
+	missions[mission_id] = state
+	stat_changed.emit("mission", 0.0)
 
 func set_stat(stat_name: String, value: float) -> void:
 	set(stat_name, value)
@@ -44,7 +80,8 @@ func to_dict() -> Dictionary:
 	return {
 		"score": score, "health": health, "energy": energy,
 		"mental_wellbeing": mental_wellbeing, "reputation": reputation,
-		"followers": followers, "backpack": backpack,
+		"followers": followers, "backpack": backpack, "money": money,
+		"street_cred": street_cred, "gangsta_cred": gangsta_cred, "moral_cred": moral_cred,
 		"relationships": relationships, "missions": missions,
 	}
 
@@ -55,6 +92,10 @@ func from_dict(d: Dictionary) -> void:
 	mental_wellbeing = float(d.get("mental_wellbeing", 100.0))
 	reputation = int(d.get("reputation", 0))
 	followers = int(d.get("followers", 0))
+	money = int(d.get("money", 20))
+	street_cred = int(d.get("street_cred", 0))
+	gangsta_cred = int(d.get("gangsta_cred", 0))
+	moral_cred = int(d.get("moral_cred", 0))
 	backpack.assign(d.get("backpack", []))
 	relationships = d.get("relationships", {})
 	missions = d.get("missions", {})

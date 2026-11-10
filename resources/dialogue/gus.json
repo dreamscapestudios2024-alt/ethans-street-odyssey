@@ -5,45 +5,161 @@
   "barks": [
     "Hey man! Got any food?"
   ],
-  "lines": [
+  "conversations": [
     {
-      "speaker": "gus",
-      "text": "Hey man! Got any food?"
+      "when": {
+        "mission": "gus_food",
+        "is": "none"
+      },
+      "lines": [
+        {
+          "speaker": "gus",
+          "text": "Hey man! Got any food?"
+        },
+        {
+          "choice": [
+            {
+              "id": "scram",
+              "text": "Scram ya bum!"
+            },
+            {
+              "id": "give",
+              "text": "Sure man! Here ya go bro!",
+              "requires": {
+                "money": 5
+              },
+              "need_text": "need $5",
+              "cost_text": "-$5"
+            },
+            {
+              "id": "fetch",
+              "text": "I got nothing but let me go to a shop and grab ya something homie!"
+            }
+          ]
+        }
+      ],
+      "branches": {
+        "scram": {
+          "effects": {
+            "cred": {
+              "gangsta": 5
+            },
+            "mission": {
+              "gus_food": "refused"
+            },
+            "meet": true,
+            "banner": "Gangsta Cred +5"
+          },
+          "lines": [
+            {
+              "speaker": "gus",
+              "text": "Easy, kid. No harm done. I've heard worse from better."
+            },
+            {
+              "speaker": "gus",
+              "text": "Go on. Show me some skating."
+            }
+          ]
+        },
+        "give": {
+          "effects": {
+            "money": -5,
+            "cred": {
+              "street": 5
+            },
+            "mission": {
+              "gus_food": "fed"
+            },
+            "meet": true,
+            "banner": "Street Cred +5   (-$5)"
+          },
+          "lines": [
+            {
+              "speaker": "gus",
+              "text": "Bless you, kid. That's a hot meal tonight."
+            },
+            {
+              "speaker": "gus",
+              "text": "Now go on. Show me something good."
+            }
+          ]
+        },
+        "fetch": {
+          "effects": {
+            "mission": {
+              "gus_food": "active"
+            },
+            "meet": true,
+            "banner": "Mission: buy Gus a hot dog!  The stand is back to the left - skate backwards!"
+          },
+          "lines": [
+            {
+              "speaker": "gus",
+              "text": "That's real kind of you. The hot dog stand's just back down the block. Get the works."
+            },
+            {
+              "speaker": "ethan",
+              "text": "Back in a flash, Gus!"
+            }
+          ]
+        }
+      }
     },
     {
-      "speaker": "ethan",
-      "text": "Sorry, Gus. Nothing on me right now."
+      "when": {
+        "mission": "gus_food",
+        "is": "active",
+        "not_has_item": "hot_dog"
+      },
+      "lines": [
+        {
+          "speaker": "gus",
+          "text": "The hot dog stand's back down the block, kid. Mustard and onions, the works."
+        }
+      ]
     },
     {
-      "speaker": "gus",
-      "text": "No worries, kid. Folks round here look out for me. I've watched this stretch of Venice for eleven years. I know every crack in this pavement."
+      "when": {
+        "mission": "gus_food",
+        "is": "active",
+        "has_item": "hot_dog"
+      },
+      "lines": [
+        {
+          "speaker": "ethan",
+          "text": "Here you go, Gus. Fresh off the grill."
+        },
+        {
+          "speaker": "gus",
+          "text": "Mustard AND onions. Kid, you're a good one."
+        },
+        {
+          "speaker": "gus",
+          "text": "I won't forget this. And here's a tip: rails love speed. Jump early, hold the button, and don't brake mid-grind."
+        }
+      ],
+      "effects": {
+        "take_item": "hot_dog",
+        "mission": {
+          "gus_food": "done"
+        },
+        "cred": {
+          "moral": 10
+        },
+        "banner": "Moral Cred +10"
+      }
     },
     {
-      "speaker": "gus",
-      "text": "Here's a tip: rails love speed. Jump early, hold the button, and don't brake mid-grind."
-    },
-    {
-      "speaker": "gus",
-      "text": "And watch out for the pothole past the market. It's got a grudge against skaters."
-    },
-    {
-      "speaker": "gus",
-      "text": "Go on, then. Show me something good."
+      "lines": [
+        {
+          "speaker": "gus",
+          "text": "Back again? Speed first, then jump. The rest is just style."
+        },
+        {
+          "speaker": "gus",
+          "text": "And watch the pothole past the market. It's got a grudge against skaters."
+        }
+      ]
     }
-  ],
-  "repeat_lines": [
-    {
-      "speaker": "gus",
-      "text": "Hey man! Got any food yet?"
-    },
-    {
-      "speaker": "ethan",
-      "text": "Not yet, Gus. I'll keep an eye out."
-    },
-    {
-      "speaker": "gus",
-      "text": "Speed first, then jump. The rest is just style."
-    }
-  ],
-  "reputation": 5
+  ]
 }

@@ -10,7 +10,7 @@ extends CanvasLayer
 const TEX := 128
 # [action, label, centre (1920x1080 canvas), radius, colour, slide-between-buttons]
 const SPEC := [
-	["brake", "BRAKE", Vector2(150, 930), 105.0, Color("e8504a"), true],
+	["brake", "BRAKE\nBACK", Vector2(150, 930), 105.0, Color("e8504a"), true],
 	["push", "PUSH", Vector2(400, 930), 120.0, Color("3fae5a"), true],
 	["drift", "DRIFT", Vector2(150, 740), 62.0, Color("e0a030"), false],
 	["jump", "JUMP", Vector2(1760, 900), 135.0, Color("3a8fe0"), false],

@@ -22,6 +22,7 @@ signal recovered
 @export var sprite_scale: float = 0.95  ## scales production art to fit the 110px collision body
 @export_group("Ground")
 @export var max_speed: float = 900.0
+@export var max_reverse_speed: float = 650.0   ## top speed rolling backwards (left)
 @export var push_accel: float = 520.0
 @export var roll_friction: float = 70.0
 @export var brake_decel: float = 900.0
@@ -56,7 +57,8 @@ signal recovered
 @export var rail_cooldown_time: float = 0.3
 
 var state: State = State.IDLE
-var speed: float = 0.0              ## signed ground speed along travel direction
+var speed: float = 0.0              ## signed ground speed: + rolling right, - rolling left (reverse)
+var facing: int = 1                 ## 1 = facing right, -1 = facing left (follows travel direction)
 var controls_enabled: bool = true
 var last_floor_normal: Vector2 = Vector2.UP
 
@@ -106,14 +108,15 @@ func respawn(at: Vector2) -> void:
 	_prev_pos = at
 	velocity = Vector2.ZERO
 	speed = 0.0
+	facing = 1
 	_rail = null
 	_invuln = 0.3  # stale hazard overlaps from the old position must not trigger
 	_set_state(State.IDLE)
 
-func hazard_hit(reason: String, clear_x: float = NAN) -> void:
+func hazard_hit(reason: String, clear_x: float = NAN, clear_x_left: float = NAN) -> void:
 	if state == State.FALL or state == State.GRIND or _invuln > 0.0:
 		return
-	_begin_fall(reason, clear_x)
+	_begin_fall(reason, clear_x if (facing >= 0 or is_nan(clear_x_left)) else clear_x_left)
 
 func is_grounded_state() -> bool:
 	return state in [State.IDLE, State.PUSH, State.CRUISE, State.SPEED,
@@ -159,18 +162,26 @@ func _physics_ground(delta: float, push: bool, brake: bool, crouch: bool, drift:
 	if is_on_floor():
 		last_floor_normal = get_floor_normal()
 
-	# Speed model
-	if brake and speed > 5.0 and not crouch:
-		var decel := drift_decel if (drift and speed > drift_min_speed) else brake_decel
+	# Speed model. Signed: Right/Push accelerates right; Left/Brake slows him, stops him, then rolls
+	# him backwards (reverse), mirrored for the other direction. Both pressed = coast.
+	var axis := 0
+	if push and not brake:
+		axis = 1
+	elif brake and not push:
+		axis = -1
+	var opposing := axis != 0 and speed * float(axis) < -5.0   # pressing against the way he is rolling
+	if opposing and not crouch:
+		var decel := drift_decel if (drift and absf(speed) > drift_min_speed) else brake_decel
 		speed = MovementMath.approach(speed, 0.0, decel * delta)
-	elif push and not crouch:
-		var factor := clampf(1.0 - speed / max_speed, 0.05, 1.0)
-		speed = minf(speed + push_accel * (0.35 + 0.65 * factor) * delta, max_speed)
+	elif axis != 0 and not crouch:
+		var cap := max_speed if axis > 0 else max_reverse_speed
+		var factor := clampf(1.0 - absf(speed) / cap, 0.05, 1.0)
+		speed = clampf(speed + float(axis) * push_accel * (0.35 + 0.65 * factor) * delta, -max_reverse_speed, max_speed)
 	else:
 		var drag := roll_friction + (crouch_drag if crouch else 0.0)
 		speed = MovementMath.approach(speed, 0.0, drag * delta)
 	if is_on_floor():
-		speed = clampf(speed + MovementMath.slope_accel(last_floor_normal, gravity, slope_influence) * delta, 0.0, max_speed)
+		speed = clampf(speed + MovementMath.slope_accel(last_floor_normal, gravity, slope_influence) * delta, -max_reverse_speed, max_speed)
 
 	# Jump (buffered, with coyote time)
 	if _jump_buffer > 0.0 and _coyote > 0.0:
@@ -195,10 +206,10 @@ func _physics_ground(delta: float, push: bool, brake: bool, crouch: bool, drift:
 		else:
 			_set_state(State.AIRBORNE)
 		return
-	if is_on_wall() and speed_before > 1.0:
+	if is_on_wall() and absf(speed_before) > 1.0:
 		var n := get_wall_normal()
-		if n.x < -0.5:
-			if speed_before >= wall_crash_speed:
+		if (speed_before > 0.0 and n.x < -0.5) or (speed_before < 0.0 and n.x > 0.5):
+			if absf(speed_before) >= wall_crash_speed:
 				_begin_fall("collision")
 				return
 			speed = 0.0
@@ -209,15 +220,21 @@ func _pick_ground_state(push: bool, brake: bool, crouch: bool, drift: bool) -> S
 		return State.LANDING
 	if crouch:
 		return State.CROUCH
-	if brake and speed > 5.0:
-		return State.DRIFT if (drift and speed > drift_min_speed) else State.BRAKE
-	if push:
-		return State.SPEED if speed >= speed_threshold else State.PUSH
-	if speed < idle_speed:
+	var axis := 0
+	if push and not brake:
+		axis = 1
+	elif brake and not push:
+		axis = -1
+	var mag := absf(speed)
+	if axis != 0 and speed * float(axis) < -5.0:            # pressing against the way he rolls
+		return State.DRIFT if (drift and mag > drift_min_speed) else State.BRAKE
+	if axis != 0:
+		return State.SPEED if mag >= speed_threshold else State.PUSH
+	if mag < idle_speed:
 		return State.IDLE
-	if speed >= speed_threshold:
+	if mag >= speed_threshold:
 		return State.SPEED
-	return State.CRUISE if speed >= cruise_speed else State.IDLE
+	return State.CRUISE if mag >= cruise_speed else State.IDLE
 
 func _do_jump(crouched: bool) -> void:
 	var t := Vector2(-last_floor_normal.y, last_floor_normal.x)
@@ -241,11 +258,11 @@ func _physics_air(delta: float, push: bool, brake: bool, jump_held: bool) -> voi
 	var g := gravity * (fall_gravity_mult if velocity.y > 0.0 else 1.0)
 	velocity.y = minf(velocity.y + g * delta, max_fall_speed)
 	var ax := 0.0
-	if push:
+	if push and not brake:
 		ax = air_accel
-	elif brake:
+	elif brake and not push:
 		ax = -air_accel
-	velocity.x = clampf(velocity.x + ax * delta, 0.0, max_speed)
+	velocity.x = clampf(velocity.x + ax * delta, -max_reverse_speed, max_speed)
 	if state == State.OLLIE and velocity.y >= 0.0:
 		_set_state(State.AIRBORNE)
 
@@ -257,7 +274,7 @@ func _physics_air(delta: float, push: bool, brake: bool, jump_held: bool) -> voi
 	if is_on_floor():
 		last_floor_normal = get_floor_normal()
 		var t := Vector2(-last_floor_normal.y, last_floor_normal.x)
-		speed = maxf(velocity.dot(t), 0.0) if last_floor_normal != Vector2.UP else maxf(velocity.x, 0.0)
+		speed = velocity.dot(t) if last_floor_normal != Vector2.UP else velocity.x
 		var hard := _prev_vy > hard_landing_speed
 		landed.emit(_prev_vy, hard)
 		if hard:
@@ -266,10 +283,10 @@ func _physics_air(delta: float, push: bool, brake: bool, jump_held: bool) -> voi
 		_landing_timer = landing_time
 		_set_state(State.LANDING)
 		return
-	if is_on_wall() and get_wall_normal().x < -0.5 and vx_before >= wall_crash_speed and not is_on_ceiling():
-		_begin_fall("collision")
-	elif is_on_wall():
-		velocity.x = maxf(velocity.x, 0.0)
+	if is_on_wall() and not is_on_ceiling():
+		var wn := get_wall_normal()
+		if (wn.x < -0.5 and vx_before >= wall_crash_speed) or (wn.x > 0.5 and vx_before <= -wall_crash_speed):
+			_begin_fall("collision")
 
 # --- Grind -------------------------------------------------------------------
 
@@ -341,9 +358,9 @@ func _begin_fall(reason: String, clear_x: float = NAN) -> void:
 	fell.emit(reason)
 
 func _physics_fall(delta: float) -> void:
-	if not is_nan(_clear_x) and global_position.x < _clear_x:
-		# Slide clear of the hazard over the remaining wipeout time.
-		velocity.x = clampf((_clear_x - global_position.x) / maxf(_fall_timer, 0.1), 0.0, 400.0)
+	if not is_nan(_clear_x) and absf(_clear_x - global_position.x) > 2.0:
+		# Slide clear of the hazard (towards the side he was travelling) over the remaining wipeout time.
+		velocity.x = clampf((_clear_x - global_position.x) / maxf(_fall_timer, 0.1), -400.0, 400.0)
 	else:
 		velocity.x = MovementMath.approach(velocity.x, 0.0, fall_friction * delta)
 	velocity.y = minf(velocity.y + gravity * delta, max_fall_speed)
@@ -376,8 +393,12 @@ func animation_for_state(s: State) -> String:
 	return _ANIM_FOR_STATE[s]
 
 func _update_visuals(delta: float) -> void:
+	var travel_x := speed if (is_grounded_state() or state == State.GRIND) else velocity.x
+	if absf(travel_x) > 25.0:
+		facing = 1 if travel_x > 0.0 else -1
+	sprite.flip_h = facing < 0                          # all artwork is drawn facing right
 	var anim := animation_for_state(state)
-	if state == State.PUSH and speed >= fast_push_speed and sprite.sprite_frames.has_animation("push_fast"):
+	if state == State.PUSH and absf(speed) >= fast_push_speed and sprite.sprite_frames.has_animation("push_fast"):
 		anim = "push_fast"
 	if sprite.animation != anim:
 		# keep the walk-cycle phase when swapping between the two push variants
@@ -388,7 +409,7 @@ func _update_visuals(delta: float) -> void:
 		if swap_push:
 			sprite.set_frame_and_progress(mini(frame, sprite.sprite_frames.get_frame_count(anim) - 1), progress)
 	if state == State.PUSH or state == State.CRUISE or state == State.SPEED:
-		sprite.speed_scale = clampf(0.6 + speed / 500.0, 0.6, 2.2)
+		sprite.speed_scale = clampf(0.6 + absf(speed) / 500.0, 0.6, 2.2)
 	else:
 		sprite.speed_scale = 1.0
 	var target_rot := 0.0

@@ -34,7 +34,7 @@ func _physics_process(delta: float) -> void:
 	if target == null:
 		return
 	var spd: float = target.velocity.x if "velocity" in target else 0.0
-	var wanted := look_ahead_for_speed(maxf(spd, 0.0))
+	var wanted := look_ahead_for_speed(absf(spd)) * signf(spd)
 	_look = lerpf(_look, wanted, 1.0 - exp(-look_ahead_response * delta))
 	var desired_y: float = target.global_position.y + vertical_offset
 	if absf(desired_y - _focus_y) > vertical_dead_zone:

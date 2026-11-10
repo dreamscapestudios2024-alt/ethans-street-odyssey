@@ -7,18 +7,23 @@ var _info: Label
 var _banner: Label
 var _banner_time := 0.0
 var _help: Label
+var _wallet: Label
+var _objective: Label
 
 func _ready() -> void:
 	layer = 20
 	_score = _label(Vector2(40, 24), 56)
 	_info = _label(Vector2(40, 100), 28)
+	_wallet = _label(Vector2(40, 142), 28)
+	_objective = _label(Vector2(40, 186), 28)
+	_objective.add_theme_color_override("font_color", Color("ffd23f"))
 	_banner = _label(Vector2(0, 220), 72)
 	_banner.size = Vector2(1920, 100)
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(MusicToggle.new())
 	var help := _label(Vector2(40, 990), 24)
 	_help = help
-	help.text = "A/D or Left/Right: push & brake    Space: jump (hold = higher)    S: crouch    Shift+brake: drift    R: restart"
+	help.text = "A/D or Left/Right: skate (brake, then reverse)    Space: jump (hold = higher)    S: crouch    Shift+brake: drift    R: restart"
 
 func _label(pos: Vector2, size: int) -> Label:
 	var l := Label.new()
@@ -35,6 +40,12 @@ func set_score(v: int) -> void:
 
 func set_info(text: String) -> void:
 	_info.text = text
+
+func set_wallet(text: String) -> void:
+	_wallet.text = text
+
+func set_objective(text: String) -> void:
+	_objective.text = text
 
 func show_banner(text: String, seconds: float = 1.2) -> void:
 	_banner.text = text

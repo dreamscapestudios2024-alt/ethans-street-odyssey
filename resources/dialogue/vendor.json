@@ -1,0 +1,32 @@
+{
+  "id": "vendor",
+  "name": "Hot Dog Vendor",
+  "prompt": "Slow down for a hot dog",
+  "barks": ["Hot dogs! Get your hot dogs!"],
+  "conversations": [
+    {
+      "when": {"mission": "gus_food", "is": "active", "not_has_item": "hot_dog"},
+      "lines": [
+        {"speaker": "vendor", "text": "Hot dogs! Four bucks, fresh off the grill. Want one?"},
+        {"choice": [
+          {"id": "buy", "text": "One with everything, please.", "requires": {"money": 4}, "need_text": "need $4", "cost_text": "-$4"},
+          {"id": "later", "text": "Not right now."}
+        ]}
+      ],
+      "branches": {
+        "buy": {
+          "effects": {"money": -4, "give_item": "hot_dog", "banner": "Got a hot dog!  Take it to Gus.   (-$4)"},
+          "lines": [{"speaker": "vendor", "text": "Mustard and onions on the house. Go on, before it gets cold!"}]
+        },
+        "later": {"lines": [{"speaker": "vendor", "text": "No rush. I'm here all day."}]}
+      }
+    },
+    {
+      "when": {"has_item": "hot_dog"},
+      "lines": [{"speaker": "vendor", "text": "That dog's getting cold! Go on, take it to your friend."}]
+    },
+    {
+      "lines": [{"speaker": "vendor", "text": "Best hot dogs on the boardwalk! Come back when you're hungry, kid."}]
+    }
+  ]
+}

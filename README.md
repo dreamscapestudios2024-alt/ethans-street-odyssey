@@ -35,8 +35,8 @@ Turn the phone sideways. On-screen buttons appear automatically: Brake and Push 
 ## Controls
 | Action | Keys |
 |---|---|
-| Push / accelerate | `D` or `→` |
-| Brake | `A` or `←` |
+| Skate right (accelerate) | `D` or `→` |
+| Skate left: brake, stop, then roll **backwards** | `A` or `←` |
 | Drift / powerslide | hold `Shift` while braking at speed |
 | Crouch (bigger ollie on release) | `S` or `↓` |
 | Ollie / jump (hold = higher) | `Space`, `W` or `↑` |

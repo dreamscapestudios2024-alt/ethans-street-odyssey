@@ -29,6 +29,7 @@ func _run() -> void:
 	await test_splash()
 	await test_touch()
 	await test_npc()
+	await test_reverse()
 	await test_gameplay()
 	print("\n%d checks, %d failed" % [_checks, _fails])
 	quit(1 if _fails > 0 else 0)
@@ -132,56 +133,212 @@ func _key(code: Key) -> void:
 	ev.pressed = true
 	Input.parse_input_event(ev)
 
+func _reset_story() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.relationships.clear()
+	gs.missions.clear()
+	gs.backpack.clear()
+	gs.money = 20
+	gs.street_cred = 0
+	gs.gangsta_cred = 0
+	gs.moral_cred = 0
+
+## Rolls Ethan up to an NPC, lets the conversation open, and plays it through, picking `choice`
+## when a choice appears (empty = stop at the choice). Returns once the dialogue has closed.
+func _talk_to(lvl: Node2D, npc: Npc, choice: String = "") -> void:
+	var e: Ethan = lvl.ethan
+	e.respawn(Vector2(npc.global_position.x - 90.0, 0.0))
+	var waited := 0
+	while not lvl.dialogue.is_open and waited < 700:          # NPCs rest briefly after a chat
+		await _step(10)
+		waited += 10
+	var guard := 0
+	while lvl.dialogue.is_open and guard < 40:
+		await _frames(25)                 # past the swallow-gap, text finishes typing
+		if lvl.dialogue.choices_active:
+			if choice == "":
+				break
+			lvl.dialogue.choose(choice)
+		else:
+			_key(KEY_ENTER)
+		await _frames(3)
+		guard += 1
+	await _frames(5)
+
 func test_npc() -> void:
-	print("NPC conversation (Gus)")
-	var lvl := await _new_level()
+	print("NPC conversations: Gus and the hot dog vendor")
+	var lvl := await _new_level(false)
 	var e: Ethan = lvl.ethan
 	var gus: Npc = lvl.gus
+	var vendor: Npc = lvl.vendor
 	var gs: Node = root.get_node("GameState")
-	gs.relationships.erase("gus")
-	gs.reputation = 0
-	check(gus != null and gus.npc_id == "gus" and gus.display_name == "Gus", "Gus loaded from resources/dialogue/gus.json")
-	check(gus.data.get("lines", []).size() >= 3, "dialogue lines present")
+	_reset_story()
+	check(gus.npc_id == "gus" and gus.display_name == "Gus", "Gus loaded from resources/dialogue/gus.json")
 	check(gus.data.get("barks", []) == ["Hey man! Got any food?"], "Gus greets Ethan with 'Hey man! Got any food?'")
-	var first_line: Dictionary = gus.data["lines"][0]
-	var second_line: Dictionary = gus.data["lines"][1]
-	check(first_line["speaker"] == "gus" and first_line["text"] == "Hey man! Got any food?", "conversation opens with the greeting")
-	check(second_line["speaker"] == "ethan", "Ethan replies")
-	check(not _has_collider(gus), "NPC has no collision (never blocks Ethan)")
+	check(not _has_collider(gus) and not _has_collider(vendor), "NPCs have no collision (never block Ethan)")
+	check(vendor.global_position.x < gus.global_position.x, "hot dog stand is behind Gus (reverse skating needed)")
 	# rolling past quickly: a greeting, but no conversation
 	e.respawn(Vector2(gus.global_position.x - 500.0, 0.0))
 	await _step(20)
-	e.speed = 400.0
 	for i in 50:
 		await _step(1)
 		e.speed = 400.0
 	check(not lvl.dialogue.is_open, "no conversation while rolling past at speed")
-	# stopping next to him opens the conversation
+
+	# --- Option 1: Scram -> Gangsta Cred
 	e.respawn(Vector2(gus.global_position.x - 90.0, 0.0))
 	await _step(120)
 	check(lvl.dialogue.is_open, "stopping beside Gus opens the conversation")
 	check(not e.controls_enabled, "Ethan's controls are paused while talking")
 	var guard := 0
-	while lvl.dialogue.is_open and guard < 30:
-		await _frames(25)                 # past the swallow-gap, text finishes typing
+	while not lvl.dialogue.choices_active and guard < 20:
+		await _frames(25)
 		_key(KEY_ENTER)
 		await _frames(3)
 		guard += 1
-	check(not lvl.dialogue.is_open, "conversation ends after the last line")
-	check(e.controls_enabled, "controls come back")
-	check(int(gs.relationships.get("gus", 0)) == 1, "relationship with Gus recorded in GameState")
-	check(gs.reputation == int(gus.data.get("reputation", 0)), "first meeting earns reputation (%d)" % gs.reputation)
-	# talking again: shorter repeat lines, no second reward
-	e.respawn(Vector2(gus.global_position.x - 60.0, 0.0))
-	await _step(300)
-	var rep_before: int = gs.reputation
+	check(lvl.dialogue.choices_active and lvl.dialogue._choice_options.size() == 3, "Ethan is offered three replies")
+	check(lvl.dialogue._choice_options[0]["text"] == "Scram ya bum!" and lvl.dialogue._choice_options[1]["text"] == "Sure man! Here ya go bro!", "reply wording")
+	await _frames(25)
+	_key(KEY_1)                                   # keyboard shortcut for option 1
+	await _frames(3)
 	guard = 0
 	while lvl.dialogue.is_open and guard < 30:
 		await _frames(25)
 		_key(KEY_ENTER)
 		await _frames(3)
 		guard += 1
-	check(gs.reputation == rep_before and int(gs.relationships.get("gus", 0)) == 1, "no repeat reward on later chats")
+	check(gs.gangsta_cred == 5 and gs.street_cred == 0 and gs.moral_cred == 0, "Scram -> +5 Gangsta Cred only")
+	check(gs.mission_state("gus_food") == "refused" and int(gs.relationships.get("gus", 0)) == 1, "Gus remembers (mission refused, relationship recorded)")
+	check(e.controls_enabled, "controls come back after the chat")
+	await _talk_to(lvl, gus)                      # later chat: short repeat, no choice, no extra rewards
+	check(gs.gangsta_cred == 5 and gs.street_cred == 0, "later chats give no repeat reward")
+
+	# --- Option 2: Give $5 -> Street Cred
+	_reset_story()
+	await _talk_to(lvl, gus, "give")
+	check(gs.street_cred == 5 and gs.gangsta_cred == 0 and gs.moral_cred == 0 and gs.money == 15, "Sure man! -> +5 Street Cred, costs $5")
+	check(gs.mission_state("gus_food") == "fed", "Gus has been fed")
+	_reset_story()
+	gs.money = 3                                  # cannot afford option 2
+	e.respawn(Vector2(gus.global_position.x - 90.0, 0.0))
+	await _step(120)
+	guard = 0
+	while not lvl.dialogue.choices_active and guard < 20:
+		await _frames(25)
+		_key(KEY_ENTER)
+		await _frames(3)
+		guard += 1
+	await _frames(25)
+	check(not lvl.dialogue.choose("give") and gs.street_cred == 0 and gs.money == 3, "option 2 is unavailable without $5")
+	lvl.dialogue.choose("scram")
+	await _frames(10)
+	while lvl.dialogue.is_open:
+		await _frames(25)
+		_key(KEY_ENTER)
+		await _frames(3)
+
+	# --- Option 3: fetch a hot dog -> Moral Cred on delivery
+	_reset_story()
+	await _talk_to(lvl, gus, "fetch")
+	check(gs.mission_state("gus_food") == "active" and gs.moral_cred == 0, "mission started, no Moral Cred yet")
+	await _talk_to(lvl, gus)
+	check(gs.mission_state("gus_food") == "active", "Gus reminds Ethan where the stand is")
+	await _talk_to(lvl, vendor, "buy")
+	check(gs.has_item("hot_dog") and gs.money == 16, "bought a hot dog for $4")
+	await _talk_to(lvl, vendor)
+	check(gs.backpack.count("hot_dog") == 1, "the vendor will not sell a second one")
+	await _talk_to(lvl, gus)
+	check(gs.moral_cred == 10 and gs.street_cred == 0 and gs.gangsta_cred == 0, "delivering the hot dog -> +10 Moral Cred")
+	check(not gs.has_item("hot_dog") and gs.mission_state("gus_food") == "done", "hot dog handed over, mission done")
+	await _talk_to(lvl, gus)
+	check(gs.moral_cred == 10, "no repeat Moral Cred")
+	# vendor refuses nothing without the mission; and cannot sell when broke
+	_reset_story()
+	gs.missions["gus_food"] = "active"
+	gs.money = 2
+	e.respawn(Vector2(vendor.global_position.x - 90.0, 0.0))
+	await _step(120)
+	guard = 0
+	while not lvl.dialogue.choices_active and guard < 20:
+		await _frames(25)
+		_key(KEY_ENTER)
+		await _frames(3)
+		guard += 1
+	await _frames(25)
+	check(not lvl.dialogue.choose("buy") and not gs.has_item("hot_dog"), "cannot buy a hot dog with $2")
+	lvl.dialogue.choose("later")
+	await _frames(10)
+	while lvl.dialogue.is_open:
+		await _frames(25)
+		_key(KEY_ENTER)
+		await _frames(3)
+	_reset_story()
+	lvl.queue_free()
+	await _step(2)
+
+func test_reverse() -> void:
+	print("Reverse skating")
+	var lvl := await _new_level()
+	var e: Ethan = lvl.ethan
+	e.respawn(Vector2(1300.0, 0.0))
+	await _step(20)
+	check(e.facing == 1 and not e.sprite.flip_h, "starts facing right")
+	Input.action_press("push")
+	await _step(60)
+	check(e.speed > 200.0, "rolling right (speed %d)" % int(e.speed))
+	Input.action_release("push")
+	Input.action_press("brake")
+	await _step(60)
+	await _step(240)
+	check(e.speed < -150.0, "holding Left brakes, stops, then rolls backwards (speed %d)" % int(e.speed))
+	check(e.facing == -1 and e.sprite.flip_h, "Ethan turns to face left and the sprite mirrors")
+	check(e.state in [Ethan.State.PUSH, Ethan.State.CRUISE, Ethan.State.SPEED], "reverse uses the normal skating animations")
+	await _step(200)
+	check(e.speed >= -e.max_reverse_speed - 1.0, "reverse speed is capped (%d)" % int(e.speed))
+	var x_rev := e.global_position.x
+	Input.action_release("brake")
+	await _step(60)
+	check(absf(e.speed) < absf(e.max_reverse_speed) and e.global_position.x < x_rev + 1.0, "coasting keeps rolling left")
+	Input.action_press("push")
+	await _step(30)
+	check(e.speed > -e.max_reverse_speed, "pushing right while reversing brakes first")
+	await _step(240)
+	check(e.speed > 100.0 and e.facing == 1 and not e.sprite.flip_h, "then he rolls forward again facing right")
+	Input.action_release("push")
+	# jump while reversing keeps the direction
+	e.respawn(Vector2(1000.0, 0.0))
+	await _step(20)
+	Input.action_press("brake")
+	await _step(150)
+	Input.action_press("jump")
+	await _step(40)
+	Input.action_release("jump")
+	check(e.state in [Ethan.State.OLLIE, Ethan.State.AIRBORNE] and e.velocity.x < 0.0, "ollie while reversing keeps travelling left")
+	await _step(150)
+	check(e.is_on_floor() and e.speed < 0.0, "lands rolling backwards")
+	Input.action_release("brake")
+	# the invisible wall at the start of the street stops reversing Ethan (a crash if he hits it fast)
+	e.respawn(Vector2(lvl.level_start_x + 800.0, 0.0))
+	await _step(20)
+	Input.action_press("brake")
+	await _step(900)
+	Input.action_release("brake")
+	check(e.global_position.x > lvl.level_start_x and e.global_position.y < 50.0, "left end wall stops him (x %d)" % int(e.global_position.x))
+	# pothole from the right (travelling left) slides him out on the far, left side
+	var pit: StreetModule
+	for m in lvl.course.modules:
+		if m.type == StreetModule.Type.POTHOLE:
+			pit = m
+	e.respawn(Vector2(pit.position.x + pit.effective_length() + 400.0, 0.0))
+	await _step(20)
+	Input.action_press("brake")
+	await _step(300)
+	Input.action_release("brake")
+	check(e.state == Ethan.State.FALL or e.global_position.x < pit.position.x + pit.effective_length(), "reverse into the pothole causes a fall")
+	await _step(500)
+	check(e.state != Ethan.State.FALL and e.global_position.x < pit.position.x, "recovers on the left side of the pothole (x %d)" % int(e.global_position.x))
+	await _step(300)
+	check(e.state != Ethan.State.FALL, "does not re-fall in the same pothole")
 	lvl.queue_free()
 	await _step(2)
 
@@ -238,7 +395,7 @@ func test_touch() -> void:
 	var e: Ethan = lvl.ethan
 	for n in get_nodes_in_group_safe("touch_controls"):
 		n.show_controls()
-	e.respawn(Vector2(-1500.0, 0.0))
+	e.respawn(Vector2(-1000.0, 0.0))
 	await _frames(20)
 	_touch(0, push_pos, true)
 	await _step(150)
@@ -304,11 +461,14 @@ func _step(n: int) -> void:
 	for i in n:
 		await physics_frame
 
-func _new_level() -> Node2D:
+func _new_level(quiet_npcs: bool = true) -> Node2D:
 	var scene: PackedScene = load("res://scenes/levels/venice_beach/venice_beach.tscn")
 	var lvl: Node2D = scene.instantiate()
 	root.add_child(lvl)
 	await _step(2)
+	if quiet_npcs:                       # general movement tests must not stop for chats
+		lvl.gus.talk_range = -1.0
+		lvl.vendor.talk_range = -1.0
 	return lvl
 
 func test_gameplay() -> void:
