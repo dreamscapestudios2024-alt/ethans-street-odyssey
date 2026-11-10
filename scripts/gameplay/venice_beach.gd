@@ -6,6 +6,8 @@ const ETHAN_SCENE := preload("res://scenes/characters/ethan.tscn")
 const FALL_Y := 2200.0
 
 var ethan: Ethan
+var gus: Npc
+var dialogue: DialogueBox
 var camera: FollowCamera
 var hud: Hud
 var course: CourseBuilder
@@ -24,6 +26,17 @@ func _ready() -> void:
 	level_end_x = course.cursor.x
 	_add_end_stop(ground, level_end_x)
 
+	# Set dressing and NPCs sit behind Ethan (added before him) and never collide with him.
+	var npcs := Node2D.new()
+	npcs.name = "Layer4a_NPCs"
+	add_child(npcs)
+	_add_prop(npcs, "res://assets/street_modules/shopping_cart.png", Vector2(1010.0, 0.0), 72.0)
+	_add_prop(npcs, "res://assets/street_modules/tent_blue.png", Vector2(1330.0, 0.0), 112.0)
+	gus = Npc.new()
+	gus.name = "Gus"
+	gus.position = Vector2(1170.0, 0.0)
+	npcs.add_child(gus)
+
 	var actors := Node2D.new()
 	actors.name = "Layer4_Characters"
 	add_child(actors)
@@ -41,6 +54,10 @@ func _ready() -> void:
 
 	hud = Hud.new()
 	add_child(hud)
+	dialogue = DialogueBox.new()
+	add_child(dialogue)
+	gus.setup(dialogue, ethan)
+	gus.conversation_finished.connect(_on_conversation_finished)
 	add_child(TouchControls.new())
 	GameState.reset_run()
 	GameState.score_changed.connect(hud.set_score)
@@ -67,6 +84,22 @@ func _add_end_stop(parent: Node, x: float) -> void:
 	cs.position = Vector2(x + 30.0 - 400.0, 0.0)        # 400px of runway before the true end; spans every ground height
 	body.add_child(cs)
 	parent.add_child(body)
+
+func _add_prop(parent: Node, path: String, base: Vector2, height_px: float) -> void:
+	if not ResourceLoader.exists(path):
+		return
+	var tex := load(path) as Texture2D
+	var sp := Sprite2D.new()
+	sp.texture = tex
+	var sc := height_px / float(tex.get_height())
+	sp.scale = Vector2(sc, sc)
+	sp.position = base + Vector2(0.0, -height_px * 0.5)   # bottom edge on the ground line
+	sp.z_index = -2
+	parent.add_child(sp)
+
+func _on_conversation_finished(npc_id: String, first_time: bool, reputation_gain: int) -> void:
+	if first_time:
+		hud.show_banner("Met %s!  +%d reputation" % [gus.display_name, reputation_gain], 2.2)
 
 func _on_grind_ended(rail: GrindRail, duration: float, _by_jump: bool) -> void:
 	var pts := int(duration * rail.score_per_second * rail.score_multiplier)

@@ -52,6 +52,7 @@ Turn the phone sideways. On-screen buttons appear automatically: Brake and Push 
 - 12 reusable street modules (`StreetModule`) with 3-piece extendable art support, side-on collision.
 - Five-layer world: parallax 0.2× / 0.4×, gameplay 1.0×, entities in world space, foreground 1.5×.
 - Speed-based camera look-ahead; score HUD; fall/recovery; restart.
+- First NPC: Gus (friendly local by a tent). Slow down beside him to chat; dialogue lives in `resources/dialogue/gus.json` (see `docs/npcs_and_dialogue.md`).
 - Production art: Ethan's animation frames, street modules and Venice Beach parallax layers are cut from the supplied sheets (`tools/`). Missing art falls back to generated placeholders.
 - Headless test suite (`tests/run_tests.gd`) incl. gameplay simulation; GitHub Actions CI and Pages deploy.
 

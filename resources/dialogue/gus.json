@@ -1,0 +1,49 @@
+{
+  "id": "gus",
+  "name": "Gus",
+  "prompt": "Slow down to chat",
+  "barks": [
+    "Hey man! Got any food?"
+  ],
+  "lines": [
+    {
+      "speaker": "gus",
+      "text": "Hey man! Got any food?"
+    },
+    {
+      "speaker": "ethan",
+      "text": "Sorry, Gus. Nothing on me right now."
+    },
+    {
+      "speaker": "gus",
+      "text": "No worries, kid. Folks round here look out for me. I've watched this stretch of Venice for eleven years. I know every crack in this pavement."
+    },
+    {
+      "speaker": "gus",
+      "text": "Here's a tip: rails love speed. Jump early, hold the button, and don't brake mid-grind."
+    },
+    {
+      "speaker": "gus",
+      "text": "And watch out for the pothole past the market. It's got a grudge against skaters."
+    },
+    {
+      "speaker": "gus",
+      "text": "Go on, then. Show me something good."
+    }
+  ],
+  "repeat_lines": [
+    {
+      "speaker": "gus",
+      "text": "Hey man! Got any food yet?"
+    },
+    {
+      "speaker": "ethan",
+      "text": "Not yet, Gus. I'll keep an eye out."
+    },
+    {
+      "speaker": "gus",
+      "text": "Speed first, then jump. The rest is just style."
+    }
+  ],
+  "reputation": 5
+}

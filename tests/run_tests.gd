@@ -28,6 +28,7 @@ func _run() -> void:
 	_holder.free()
 	await test_splash()
 	await test_touch()
+	await test_npc()
 	await test_gameplay()
 	print("\n%d checks, %d failed" % [_checks, _fails])
 	quit(1 if _fails > 0 else 0)
@@ -123,6 +124,74 @@ func test_splash() -> void:
 		music.set_muted(false)
 	root.remove_child(splash)
 	splash.free()
+
+func _key(code: Key) -> void:
+	var ev := InputEventKey.new()
+	ev.keycode = code
+	ev.physical_keycode = code
+	ev.pressed = true
+	Input.parse_input_event(ev)
+
+func test_npc() -> void:
+	print("NPC conversation (Gus)")
+	var lvl := await _new_level()
+	var e: Ethan = lvl.ethan
+	var gus: Npc = lvl.gus
+	var gs: Node = root.get_node("GameState")
+	gs.relationships.erase("gus")
+	gs.reputation = 0
+	check(gus != null and gus.npc_id == "gus" and gus.display_name == "Gus", "Gus loaded from resources/dialogue/gus.json")
+	check(gus.data.get("lines", []).size() >= 3, "dialogue lines present")
+	check(gus.data.get("barks", []) == ["Hey man! Got any food?"], "Gus greets Ethan with 'Hey man! Got any food?'")
+	var first_line: Dictionary = gus.data["lines"][0]
+	var second_line: Dictionary = gus.data["lines"][1]
+	check(first_line["speaker"] == "gus" and first_line["text"] == "Hey man! Got any food?", "conversation opens with the greeting")
+	check(second_line["speaker"] == "ethan", "Ethan replies")
+	check(not _has_collider(gus), "NPC has no collision (never blocks Ethan)")
+	# rolling past quickly: a greeting, but no conversation
+	e.respawn(Vector2(gus.global_position.x - 500.0, 0.0))
+	await _step(20)
+	e.speed = 400.0
+	for i in 50:
+		await _step(1)
+		e.speed = 400.0
+	check(not lvl.dialogue.is_open, "no conversation while rolling past at speed")
+	# stopping next to him opens the conversation
+	e.respawn(Vector2(gus.global_position.x - 90.0, 0.0))
+	await _step(120)
+	check(lvl.dialogue.is_open, "stopping beside Gus opens the conversation")
+	check(not e.controls_enabled, "Ethan's controls are paused while talking")
+	var guard := 0
+	while lvl.dialogue.is_open and guard < 30:
+		await _frames(25)                 # past the swallow-gap, text finishes typing
+		_key(KEY_ENTER)
+		await _frames(3)
+		guard += 1
+	check(not lvl.dialogue.is_open, "conversation ends after the last line")
+	check(e.controls_enabled, "controls come back")
+	check(int(gs.relationships.get("gus", 0)) == 1, "relationship with Gus recorded in GameState")
+	check(gs.reputation == int(gus.data.get("reputation", 0)), "first meeting earns reputation (%d)" % gs.reputation)
+	# talking again: shorter repeat lines, no second reward
+	e.respawn(Vector2(gus.global_position.x - 60.0, 0.0))
+	await _step(300)
+	var rep_before: int = gs.reputation
+	guard = 0
+	while lvl.dialogue.is_open and guard < 30:
+		await _frames(25)
+		_key(KEY_ENTER)
+		await _frames(3)
+		guard += 1
+	check(gs.reputation == rep_before and int(gs.relationships.get("gus", 0)) == 1, "no repeat reward on later chats")
+	lvl.queue_free()
+	await _step(2)
+
+func _has_collider(n: Node) -> bool:
+	if n is CollisionObject2D or n is CollisionShape2D or n is CollisionPolygon2D:
+		return true
+	for c in n.get_children():
+		if _has_collider(c):
+			return true
+	return false
 
 func _frames(n: int) -> void:
 	for i in n:
